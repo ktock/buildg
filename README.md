@@ -111,15 +111,9 @@ hello
   - [runc](https://github.com/opencontainers/runc)
   - [OPTIONAL] [RootlessKit](https://github.com/rootless-containers/rootlesskit) and [slirp4netns](https://github.com/rootless-containers/slirp4netns) for rootless execution
 
-### Using go
-
-```
-$ go install github.com/ktock/buildg@latest
-```
-
-Optionally install [`buildg.sh`](./extras/buildg.sh) for rootless execution (discussed later).
-
 ### Using make
+
+Go 1.18+ is needed.
 
 ```
 $ git clone https://github.com/ktock/buildg
