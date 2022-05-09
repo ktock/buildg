@@ -10,14 +10,13 @@ jobs:
     name: Build
     env:
       OUTPUT_DIR: ${{ github.workspace }}/release-out
+      ARCH_ID: "amd64"
     steps:
     - uses: actions/setup-go@v3
       with:
         go-version: '1.18.x'
     - uses: actions/checkout@v3
     - name: Build Binary
-      env:
-        ARCH_ID: "amd64"
       run: |
         mkdir ${OUTPUT_DIR}
         RELEASE_TAG="${GITHUB_REF##*/}"
@@ -40,6 +39,7 @@ jobs:
     needs: [build]
     env:
       OUTPUT_DIR: ${{ github.workspace }}/builds
+      ARCH_ID: "amd64"
     steps:
     - uses: actions/checkout@v3
     - name: Download Builds
@@ -48,7 +48,6 @@ jobs:
         path: ${{ env.OUTPUT_DIR }}
     - name: Create Release
       env:
-        ARCH_ID: "amd64"
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         RELEASE_TAG="${GITHUB_REF##*/}"
