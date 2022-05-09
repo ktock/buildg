@@ -157,6 +157,7 @@ USAGE:
 
 COMMANDS:
    debug    Debug a build
+   version  Version info
    help, h  Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
@@ -166,7 +167,7 @@ GLOBAL OPTIONS:
 
 ### buildg debug
 
-```
+```console
 $ buildg debug --help
 NAME:
    buildg debug - Debug a build

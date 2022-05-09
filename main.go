@@ -13,6 +13,7 @@ import (
 	"github.com/containerd/console"
 	"github.com/containerd/containerd/pkg/userns"
 	"github.com/containerd/containerd/snapshots/native"
+	"github.com/ktock/buildg/pkg/version"
 	"github.com/moby/buildkit/cache/remotecache"
 	"github.com/moby/buildkit/client"
 	"github.com/moby/buildkit/cmd/buildctl/build"
@@ -51,6 +52,7 @@ func main() {
 	}
 	app.Commands = []cli.Command{
 		newDebugCommand(),
+		newVersionCommand(),
 	}
 	app.Before = func(context *cli.Context) error {
 		logrus.SetFormatter(&logrus.TextFormatter{FullTimestamp: true})
@@ -62,6 +64,17 @@ func main() {
 	if err := app.Run(os.Args); err != nil {
 		fmt.Fprintf(os.Stderr, "%+v\n", err)
 		os.Exit(1)
+	}
+}
+
+func newVersionCommand() cli.Command {
+	return cli.Command{
+		Name:  "version",
+		Usage: "Version info",
+		Action: func(clicontext *cli.Context) error {
+			fmt.Println("buildg", version.Version, version.Revision)
+			return nil
+		},
 	}
 }
 
