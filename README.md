@@ -224,6 +224,7 @@ Leveraging the generic features added through the work, this project implements 
   - [exec](#exec)
   - [list](#list)
   - [log](#log)
+  - [reload](#reload)
   - [exit](#exit)
   - [help](#help)
 - [Global flags](#global-flags)
@@ -390,6 +391,12 @@ Flags:
 - `-n value`: Print recent n lines (default: 10)
 - `--all`, `-a`: show all lines
 - `--more`: show buffered and unread lines
+
+### reload
+
+Reload context and restart build
+
+Usage: `reload`
 
 ### exit
 

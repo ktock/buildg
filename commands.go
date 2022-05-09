@@ -43,6 +43,7 @@ var handlerCommands = []handlerCommandFn{
 	execCommand,
 	listCommand,
 	logCommand,
+	reloadCommand,
 	exitCommand,
 }
 

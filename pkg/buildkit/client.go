@@ -41,7 +41,10 @@ import (
 	"google.golang.org/grpc"
 )
 
-var ErrExit = errors.New("exit")
+var (
+	ErrExit   = errors.New("exit")
+	ErrReload = errors.New("reload")
+)
 
 type DebugConfig struct {
 	BreakpointHandler  BreakpointHandler
@@ -84,6 +87,26 @@ func Debug(ctx context.Context, cfg *config.Config, solveOpt *client.SolveOpt, p
 	}
 	defer doneController()
 
+	debugErr := debug(ctx, c, solveOpt, progressWriter, debugConfig, debugController)
+
+	if debugConfig.CleanupAll {
+		logrus.Infof("cleaning up cache")
+		if err := c.Prune(context.TODO(), nil, client.PruneAll); err != nil {
+			logrus.WithError(err).Warnf("failed to cleaning up cache")
+		}
+	}
+
+	if debugErr != nil {
+		if errors.Is(debugErr, ErrExit) {
+			return nil
+		}
+		return debugErr
+	}
+
+	return nil
+}
+
+func debug(ctx context.Context, c *client.Client, solveOpt *client.SolveOpt, progressWriter io.Writer, debugConfig DebugConfig, debugController *debugController) error {
 	// Prepare progress writer
 	progressCtx := context.TODO()
 	pw, err := progresswriter.NewPrinter(progressCtx, &nopConsoleFile{progressWriter}, "plain")
@@ -135,18 +158,9 @@ func Debug(ctx context.Context, cfg *config.Config, solveOpt *client.SolveOpt, p
 		return pw.Err()
 	})
 
-	waitErr := eg.Wait()
-
-	if debugConfig.CleanupAll {
-		logrus.Infof("cleaning up cache")
-		if err := c.Prune(context.TODO(), nil, client.PruneAll); err != nil {
-			logrus.WithError(err).Warnf("failed to cleaning up cache")
-		}
-	}
-
-	if waitErr != nil {
-		if errors.Is(waitErr, ErrExit) {
-			return nil
+	if waitErr := eg.Wait(); waitErr != nil {
+		if errors.Is(waitErr, ErrReload) {
+			return debug(ctx, c, solveOpt, progressWriter, debugConfig, debugController)
 		}
 		return waitErr
 	}
