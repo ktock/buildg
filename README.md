@@ -111,7 +111,11 @@ hello
   - [runc](https://github.com/opencontainers/runc)
   - [OPTIONAL] [RootlessKit](https://github.com/rootless-containers/rootlesskit) and [slirp4netns](https://github.com/rootless-containers/slirp4netns) for rootless execution
 
-### Using make
+### Release binaries
+
+Available from https://github.com/ktock/buildg/releases
+
+### Building using make
 
 Go 1.18+ is needed.
 
@@ -130,6 +134,8 @@ Install and use [`buildg.sh`](./extras/buildg.sh).
 ```
 $ buildg.sh debug /tmp/mybuild
 ```
+
+The doc in BuildKit project for troubleshooting: https://github.com/moby/buildkit/blob/master/docs/rootless.md#troubleshooting
 
 ## Motivation
 
