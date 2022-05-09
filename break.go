@@ -110,11 +110,22 @@ func nextCommand(ctx context.Context, hCtx *handlerContext) cli.Command {
 
 func continueCommand(ctx context.Context, hCtx *handlerContext) cli.Command {
 	return cli.Command{
-		Name:      "continue",
-		Aliases:   []string{"c"},
-		Usage:     "Proceed to the next breakpoint",
-		UsageText: "continue",
+		Name:    "continue",
+		Aliases: []string{"c"},
+		Usage:   "Proceed to the next or the specified breakpoint",
+		UsageText: `continue [BREAKPOINT_KEY]
+
+Optional arg BREAKPOINT_KEY is the key of a breakpoint until which continue the build.
+Use "breakpoints" command to list all registered breakpoints.
+`,
 		Action: func(clicontext *cli.Context) error {
+			bp := clicontext.Args().First()
+			if bp != "" {
+				if _, ok := hCtx.handler.Breakpoints().Get(bp); !ok {
+					return fmt.Errorf("unknown breakpoint %v", bp)
+				}
+				hCtx.targetBreakpoint = bp
+			}
 			hCtx.handler.BreakEachVertex(false)
 			hCtx.continueRead = false
 			return nil
