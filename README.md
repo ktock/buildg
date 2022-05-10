@@ -1,4 +1,4 @@
-# buildg: A tool to debug Dockerfile based on BuildKit
+# buildg: A tool to interactively debug Dockerfile
 
 `buildg` is a tool to interactively debug Dockerfile based on [BuildKit](https://github.com/moby/buildkit).
 
@@ -43,19 +43,19 @@ Store this Dockerfile to somewhere (e.g. `/tmp/ctx/Dockerfile`) then run `buildg
 
 ```console
 $ buildg.sh debug --image=ubuntu:22.04 /tmp/ctx
-WARN[2022-05-09T01:40:21Z] using host network as the default            
-#1 [internal] load .dockerignore
-#1 transferring context: 2B done
+WARN[2022-05-10T10:21:14Z] using host network as the default            
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 195B done
 #1 DONE 0.1s
 
-#2 [internal] load build definition from Dockerfile
-#2 transferring dockerfile: 195B done
+#2 [internal] load .dockerignore
+#2 transferring context: 2B done
 #2 DONE 0.1s
 
 #3 [internal] load metadata for docker.io/library/busybox:latest
-#3 DONE 3.0s
+#3 DONE 3.1s
 
-#4 [build1 1/2] FROM docker.io/library/busybox@sha256:d2b53584f580310186df7a2055ce3ff83cc0df6caacf1e3489bff8cf5d0af5d8
+#4 [build2 1/2] FROM docker.io/library/busybox@sha256:d2b53584f580310186df7a2055ce3ff83cc0df6caacf1e3489bff8cf5d0af5d8
 #4 resolve docker.io/library/busybox@sha256:d2b53584f580310186df7a2055ce3ff83cc0df6caacf1e3489bff8cf5d0af5d8 0.0s done
 #4 sha256:50e8d59317eb665383b2ef4d9434aeaa394dcd6f54b96bb7810fdde583e9c2d1 772.81kB / 772.81kB 0.2s done
 Filename: "Dockerfile"
@@ -68,15 +68,17 @@ Filename: "Dockerfile"
       8| COPY --from=build1 /hello /
 >>> break 2
 >>> breakpoints
-[0]: line 2
+[0]: line: Dockerfile:2
+[on-fail]: breaks on fail
 >>> continue
 #4 extracting sha256:50e8d59317eb665383b2ef4d9434aeaa394dcd6f54b96bb7810fdde583e9c2d1 0.0s done
 #4 DONE 0.3s
 
-#5 [build2 2/2] RUN echo hi > /hi
+#5 [build1 2/2] RUN echo hello > /hello
 #5 ...
 
-#6 [build1 2/2] RUN echo hello > /hello
+#6 [build2 2/2] RUN echo hi > /hi
+Breakpoint: line: Dockerfile:2: reached
 Filename: "Dockerfile"
       1| FROM busybox AS build1
 *=>   2| RUN echo hello > /hello
@@ -196,7 +198,6 @@ OPTIONS:
 
 ```
 COMMANDS:
-
 
 break, b BREAKPOINT_SPEC  set a breakpoint
   BREAKPOINT_SPEC
