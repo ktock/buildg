@@ -199,7 +199,7 @@ COMMANDS:
 
 break, b LINE_NUMBER      set a breakpoint
 breakpoints, bp           list breakpoints
-clear LINE_NUMBER         clear a breakpoint
+clear BREAKPOINT_KEY      clear a breakpoint
 clearall                  clear all breakpoints
 next, n                   proceed to the next line
 continue, c               proceed to the next breakpoint

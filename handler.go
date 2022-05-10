@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -74,9 +75,11 @@ func (o withDescriptor) SetImageOption(ii *llb.ImageInfo) {
 }
 
 type handler struct {
-	gwclient        gwclient.Client
-	stdin           *sharedReader
-	breakpointLines []int
+	gwclient gwclient.Client
+	stdin    *sharedReader
+
+	breakpoints     map[string]breakpoint
+	breakpointIndex int
 	breakEachVertex bool
 
 	initialized bool
@@ -97,12 +100,15 @@ func (h *handler) handle(ctx context.Context, info *registeredStatus, locs []*lo
 		logrus.Warnf("no location info: %v", locs)
 		return nil
 	}
-	if h.initialized && !(h.isBreakpoint(locs) || h.breakEachVertex) {
-		logrus.Debugf("skipping non-breakpoint: %v", locs)
-		return nil
+	if h.initialized && !h.breakEachVertex {
+		bp := h.getBreakpoint(ctx, breakpointContext{info, locs})
+		if bp == nil {
+			logrus.Debugf("skipping non-breakpoint: %v", locs)
+			return nil
+		}
+		fmt.Printf("Breakpoint: %s\n", bp)
 	}
 	h.initialized = true
-	logrus.Debugf("breakpoint: %+v", locs)
 	h.printLines(locs, 3, false)
 	for {
 		ln, err := h.readLine(ctx)
@@ -151,7 +157,7 @@ const helpString = `COMMANDS:
 
 break, b LINE_NUMBER      set a breakpoint
 breakpoints, bp           list breakpoints
-clear LINE_NUMBER         clear a breakpoint
+clear BREAKPOINT_KEY      clear a breakpoint
 clearall                  clear all breakpoints
 next, n                   proceed to the next line
 continue, c               proceed to the next breakpoint
@@ -179,24 +185,26 @@ func (h *handler) dispatch(ctx context.Context, info *registeredStatus, locs []*
 			fmt.Printf("cannot parse line number %q: %v\n", args[1], err)
 			return true, nil
 		}
-		h.breakpointLines = append(h.breakpointLines, int(l))
-	case "breakpoints", "bp":
-		for i, l := range h.breakpointLines {
-			fmt.Printf("[%d]: line %v\n", i, l)
+		currentIdx := h.breakpointIndex
+		h.breakpointIndex++
+		if h.breakpoints == nil {
+			h.breakpoints = make(map[string]breakpoint)
 		}
+		h.breakpoints[fmt.Sprintf("%d", currentIdx)] = newLineBreakpoint(locs[0].source.Filename, l)
+	case "breakpoints", "bp":
+		h.forEachBreakpoint(func(key string, b breakpoint) bool {
+			fmt.Printf("[%s]: %v\n", key, b)
+			return true
+		})
 	case "clear":
 		if len(args) < 2 {
-			fmt.Printf("line number must be specified for %q\n", directive)
+			fmt.Printf("breakpoint must be specified for %q\n", directive)
 			return true, nil
 		}
-		l, err := strconv.ParseInt(args[1], 10, 64)
-		if err != nil {
-			fmt.Printf("cannot parse line number %q: %v\n", args[1], err)
-			return true, nil
-		}
-		h.breakpointLines = append(h.breakpointLines[:l], h.breakpointLines[l+1:]...)
+		delete(h.breakpoints, args[1])
 	case "clearall":
-		h.breakpointLines = nil
+		h.breakpoints = nil
+		h.breakpointIndex = 0
 	case "next", "n":
 		h.breakEachVertex = true
 		return false, nil
@@ -379,17 +387,31 @@ func watchSignal(ctx context.Context, proc gwclient.ContainerProcess, con consol
 	ch <- syscall.SIGWINCH
 }
 
-func (h *handler) isBreakpoint(locs []*location) bool {
-	for _, loc := range locs {
-		for _, r := range loc.ranges {
-			for _, b := range h.breakpointLines {
-				if int(r.Start.Line) <= b && b <= int(r.End.Line) {
-					return true
-				}
-			}
+func (h *handler) getBreakpoint(ctx context.Context, info breakpointContext) (targetBP breakpoint) {
+	h.forEachBreakpoint(func(key string, b breakpoint) bool {
+		target, err := b.isTarget(ctx, info)
+		if err != nil {
+			logrus.WithError(err).Warnf("failed to check breakpoint")
+		} else if target {
+			targetBP = b
+			return false
+		}
+		return true
+	})
+	return
+}
+
+func (h *handler) forEachBreakpoint(f func(string, breakpoint) bool) {
+	var keys []string
+	for k := range h.breakpoints {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		if !f(k, h.breakpoints[k]) {
+			return
 		}
 	}
-	return false
 }
 
 func (h *handler) printLines(locs []*location, margin int, all bool) {
@@ -428,12 +450,13 @@ func (h *handler) printLines(locs []*location, margin int, all bool) {
 			}
 
 			prefix := " "
-			for _, b := range h.breakpointLines {
-				if b == i {
+			h.forEachBreakpoint(func(key string, b breakpoint) bool {
+				if b.addMark(source, int64(i)) {
 					prefix = "*"
-					break
+					return false
 				}
-			}
+				return true
+			})
 			prefix2 := "  "
 			if target {
 				prefix2 = "=>"
@@ -532,4 +555,46 @@ func (s *sharedReader) close() {
 	s.closeOnce.Do(func() {
 		close(s.done)
 	})
+}
+
+type breakpointContext struct {
+	status *registeredStatus
+	locs   []*location
+}
+
+type breakpoint interface {
+	isTarget(ctx context.Context, info breakpointContext) (bool, error)
+	addMark(source *pb.SourceInfo, line int64) bool
+	String() string
+}
+
+func newLineBreakpoint(filename string, line int64) breakpoint {
+	return &lineBreakpoint{filename, line}
+}
+
+type lineBreakpoint struct {
+	filename string
+	line     int64
+}
+
+func (b *lineBreakpoint) isTarget(ctx context.Context, info breakpointContext) (bool, error) {
+	for _, loc := range info.locs {
+		if loc.source.Filename != b.filename {
+			continue
+		}
+		for _, r := range loc.ranges {
+			if int64(r.Start.Line) <= b.line && b.line <= int64(r.End.Line) {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
+}
+
+func (b *lineBreakpoint) String() string {
+	return fmt.Sprintf("line: %s:%d", b.filename, b.line)
+}
+
+func (b *lineBreakpoint) addMark(source *pb.SourceInfo, line int64) bool {
+	return source.Filename == b.filename && line == b.line
 }
