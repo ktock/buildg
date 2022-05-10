@@ -31,6 +31,9 @@ func withDebug(f gwclient.BuildFunc, debugController *debugController, debugImag
 		handler := &handler{
 			gwclient: c,
 			stdin:    stdinR,
+			breakpoints: map[string]breakpoint{
+				"on-fail": newOnFailBreakpoint(),
+			},
 		}
 
 		doneCh := make(chan struct{})
@@ -101,12 +104,12 @@ func (h *handler) handle(ctx context.Context, info *registeredStatus, locs []*lo
 		return nil
 	}
 	if h.initialized && !h.breakEachVertex {
-		bp := h.getBreakpoint(ctx, breakpointContext{info, locs})
+		bp, description := h.getBreakpoint(ctx, breakpointContext{info, locs})
 		if bp == nil {
 			logrus.Debugf("skipping non-breakpoint: %v", locs)
 			return nil
 		}
-		fmt.Printf("Breakpoint: %s\n", bp)
+		fmt.Printf("Breakpoint: %s: %s\n", bp, description)
 	}
 	h.initialized = true
 	h.printLines(locs, 3, false)
@@ -155,18 +158,23 @@ func (h *handler) readLine(ctx context.Context) (string, error) {
 
 const helpString = `COMMANDS:
 
-break, b LINE_NUMBER      set a breakpoint
+break, b BREAKPOINT_SPEC  set a breakpoint
+  BREAKPOINT_SPEC
+    NUMBER   line number in Dockerfile
+    on-fail  step that returns an error
 breakpoints, bp           list breakpoints
 clear BREAKPOINT_KEY      clear a breakpoint
 clearall                  clear all breakpoints
 next, n                   proceed to the next line
 continue, c               proceed to the next breakpoint
 exec, e [OPTIONS] ARG...  execute command in the step
-  --image          use debugger image
-  --mountroot=DIR  mountpoint to mount the rootfs of the step. ignored if --image isn't specified.
-  --init           execute commands in an initial state of that step (experimental)
+  OPTIONS
+    --image          use debugger image
+    --mountroot=DIR  mountpoint to mount the rootfs of the step. ignored if --image isn't specified.
+    --init           execute commands in an initial state of that step (experimental)
 list, ls, l [OPTIONS]     list lines
-  --all  list all lines in the source file
+  OPTIONS
+    --all  list all lines in the source file
 exit, quit, q             exit the debugging
 `
 
@@ -180,17 +188,29 @@ func (h *handler) dispatch(ctx context.Context, info *registeredStatus, locs []*
 			fmt.Printf("line number must be specified for %q\n", directive)
 			return true, nil
 		}
-		l, err := strconv.ParseInt(args[1], 10, 64)
-		if err != nil {
-			fmt.Printf("cannot parse line number %q: %v\n", args[1], err)
+		var key string
+		var b breakpoint
+		if args[1] == "on-fail" {
+			key = "on-fail"
+			b = newOnFailBreakpoint()
+		} else if l, err := strconv.ParseInt(args[1], 10, 64); err == nil {
+			currentIdx := h.breakpointIndex
+			h.breakpointIndex++
+			key = fmt.Sprintf("%d", currentIdx)
+			b = newLineBreakpoint(locs[0].source.Filename, l)
+		}
+		if b == nil {
+			fmt.Printf("cannot parse breakpoint %q\n", args[1])
 			return true, nil
 		}
-		currentIdx := h.breakpointIndex
-		h.breakpointIndex++
+		if b, ok := h.breakpoints[key]; ok {
+			fmt.Printf("breakpoint %q is already registered: %s\n", key, b)
+			return true, nil
+		}
 		if h.breakpoints == nil {
 			h.breakpoints = make(map[string]breakpoint)
 		}
-		h.breakpoints[fmt.Sprintf("%d", currentIdx)] = newLineBreakpoint(locs[0].source.Filename, l)
+		h.breakpoints[key] = b
 	case "breakpoints", "bp":
 		h.forEachBreakpoint(func(key string, b breakpoint) bool {
 			fmt.Printf("[%s]: %v\n", key, b)
@@ -276,10 +296,10 @@ type containerConfig struct {
 }
 
 func (h *handler) execContainer(ctx context.Context, cfg containerConfig) error {
-	op := cfg.info.Op
-	mountIDs := cfg.info.MountIDs
+	op := cfg.info.op
+	mountIDs := cfg.info.mountIDs
 	if cfg.inputMount {
-		mountIDs = cfg.info.InputIDs
+		mountIDs = cfg.info.inputIDs
 	}
 	var exec *pb.ExecOp
 	switch op := op.GetOp().(type) {
@@ -387,13 +407,14 @@ func watchSignal(ctx context.Context, proc gwclient.ContainerProcess, con consol
 	ch <- syscall.SIGWINCH
 }
 
-func (h *handler) getBreakpoint(ctx context.Context, info breakpointContext) (targetBP breakpoint) {
+func (h *handler) getBreakpoint(ctx context.Context, info breakpointContext) (targetBP breakpoint, description string) {
 	h.forEachBreakpoint(func(key string, b breakpoint) bool {
-		target, err := b.isTarget(ctx, info)
+		target, d, err := b.isTarget(ctx, info)
 		if err != nil {
 			logrus.WithError(err).Warnf("failed to check breakpoint")
 		} else if target {
 			targetBP = b
+			description = d
 			return false
 		}
 		return true
@@ -563,7 +584,7 @@ type breakpointContext struct {
 }
 
 type breakpoint interface {
-	isTarget(ctx context.Context, info breakpointContext) (bool, error)
+	isTarget(ctx context.Context, info breakpointContext) (yes bool, description string, err error)
 	addMark(source *pb.SourceInfo, line int64) bool
 	String() string
 }
@@ -577,18 +598,18 @@ type lineBreakpoint struct {
 	line     int64
 }
 
-func (b *lineBreakpoint) isTarget(ctx context.Context, info breakpointContext) (bool, error) {
+func (b *lineBreakpoint) isTarget(ctx context.Context, info breakpointContext) (bool, string, error) {
 	for _, loc := range info.locs {
 		if loc.source.Filename != b.filename {
 			continue
 		}
 		for _, r := range loc.ranges {
 			if int64(r.Start.Line) <= b.line && b.line <= int64(r.End.Line) {
-				return true, nil
+				return true, "reached", nil
 			}
 		}
 	}
-	return false, nil
+	return false, "", nil
 }
 
 func (b *lineBreakpoint) String() string {
@@ -597,4 +618,22 @@ func (b *lineBreakpoint) String() string {
 
 func (b *lineBreakpoint) addMark(source *pb.SourceInfo, line int64) bool {
 	return source.Filename == b.filename && line == b.line
+}
+
+func newOnFailBreakpoint() breakpoint {
+	return &onFailBreakpoint{}
+}
+
+type onFailBreakpoint struct{}
+
+func (b *onFailBreakpoint) isTarget(ctx context.Context, info breakpointContext) (bool, string, error) {
+	return info.status.err != nil, fmt.Sprintf("got error %v", info.status.err), nil
+}
+
+func (b *onFailBreakpoint) String() string {
+	return fmt.Sprintf("breaks on fail")
+}
+
+func (b *onFailBreakpoint) addMark(source *pb.SourceInfo, line int64) bool {
+	return false
 }
