@@ -141,8 +141,11 @@ func (h *handler) readLine(ctx context.Context) (string, error) {
 	go func() {
 		if scanner.Scan() {
 			lnCh <- scanner.Text()
+		} else if err := scanner.Err(); err != nil {
+			errCh <- err
 		} else {
-			errCh <- scanner.Err()
+			// EOF thus exit
+			errCh <- errExit
 		}
 	}()
 	var ln string
