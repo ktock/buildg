@@ -197,17 +197,23 @@ OPTIONS:
 ```
 COMMANDS:
 
-break, b LINE_NUMBER      set a breakpoint
+
+break, b BREAKPOINT_SPEC  set a breakpoint
+  BREAKPOINT_SPEC
+    NUMBER   line number in Dockerfile
+    on-fail  step that returns an error
 breakpoints, bp           list breakpoints
 clear BREAKPOINT_KEY      clear a breakpoint
 clearall                  clear all breakpoints
 next, n                   proceed to the next line
 continue, c               proceed to the next breakpoint
 exec, e [OPTIONS] ARG...  execute command in the step
-  --image          use debugger image
-  --mountroot=DIR  mountpoint to mount the rootfs of the step. ignored if --image isn't specified.
-  --init           execute commands in an initial state of that step (experimental)
+  OPTIONS
+    --image          use debugger image
+    --mountroot=DIR  mountpoint to mount the rootfs of the step. ignored if --image isn't specified.
+    --init           execute commands in an initial state of that step (experimental)
 list, ls, l [OPTIONS]     list lines
-  --all  list all lines in the source file
+  OPTIONS
+    --all  list all lines in the source file
 exit, quit, q             exit the debugging
 ```

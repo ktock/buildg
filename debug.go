@@ -49,8 +49,8 @@ func (d *debugController) handle(ctx context.Context, handler *handler) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case msg := <-d.eventCh:
-			logrus.Debugf("got debug event %q", msg.DebugID)
-			if locs, err := d.getLocation(msg.Vertex.String()); err != nil {
+			logrus.Debugf("got debug event %q", msg.debugID)
+			if locs, err := d.getLocation(msg.vertex.String()); err != nil {
 				logrus.WithError(err).Warnf("failed to get location info")
 			} else {
 				if err := handler.handle(ctx, msg, locs); err != nil {
@@ -60,7 +60,7 @@ func (d *debugController) handle(ctx context.Context, handler *handler) error {
 					return err
 				}
 			}
-			d.continueID(msg.DebugID)
+			d.continueID(msg.debugID)
 		}
 	}
 }
@@ -210,26 +210,28 @@ func (d *debugWorkerWrapper) WorkerRefByID(id string) (*worker.WorkerRef, bool) 
 }
 
 type status struct {
-	Inputs []solver.Result
-	Mounts []solver.Result
-	Vertex digest.Digest
-	Op     *pb.Op
+	inputs []solver.Result
+	mounts []solver.Result
+	vertex digest.Digest
+	op     *pb.Op
+	err    error
 }
 
 type registeredStatus struct {
-	DebugID  string
-	InputIDs []string
-	MountIDs []string
-	Vertex   digest.Digest
-	Op       *pb.Op
+	debugID  string
+	inputIDs []string
+	mountIDs []string
+	vertex   digest.Digest
+	op       *pb.Op
+	err      error
 }
 
 func (d *debugWorkerWrapper) notifyAndWait(ctx context.Context, s status) error {
-	inputIDs, err := d.registerResultIDs(s.Inputs...)
+	inputIDs, err := d.registerResultIDs(s.inputs...)
 	if err != nil {
 		return err
 	}
-	mountIDs, err := d.registerResultIDs(s.Mounts...)
+	mountIDs, err := d.registerResultIDs(s.mounts...)
 	if err != nil {
 		return err
 	}
@@ -240,11 +242,12 @@ func (d *debugWorkerWrapper) notifyAndWait(ctx context.Context, s status) error 
 	case <-ctx.Done():
 		return ctx.Err()
 	case d.controller.eventCh <- &registeredStatus{
-		DebugID:  id,
-		Vertex:   s.Vertex,
-		Op:       s.Op,
-		InputIDs: inputIDs,
-		MountIDs: mountIDs,
+		debugID:  id,
+		vertex:   s.vertex,
+		op:       s.op,
+		inputIDs: inputIDs,
+		mountIDs: mountIDs,
+		err:      s.err,
 	}:
 	}
 	select {
@@ -308,10 +311,11 @@ func (o *debugOpWrapper) Exec(ctx context.Context, g session.Group, inputs []sol
 		}
 	}
 	if nErr := o.worker.notifyAndWait(ctx, status{
-		Inputs: execInputs,
-		Mounts: execMounts,
-		Vertex: o.vertex.Digest(),
-		Op:     o.vertex.Sys().(*pb.Op),
+		inputs: execInputs,
+		mounts: execMounts,
+		vertex: o.vertex.Digest(),
+		op:     o.vertex.Sys().(*pb.Op),
+		err:    err,
 	}); nErr != nil {
 		if err == nil {
 			err = nErr
