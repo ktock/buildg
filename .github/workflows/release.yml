@@ -8,9 +8,11 @@ jobs:
   build:
     runs-on: ubuntu-20.04
     name: Build
+    strategy:
+      matrix:
+        arch: ["amd64", "arm64"]
     env:
       OUTPUT_DIR: ${{ github.workspace }}/release-out
-      ARCH_ID: "amd64"
     steps:
     - uses: actions/setup-go@v3
       with:
@@ -20,9 +22,9 @@ jobs:
       run: |
         mkdir ${OUTPUT_DIR}
         RELEASE_TAG="${GITHUB_REF##*/}"
-        TAR_FILE_NAME="buildg-${RELEASE_TAG}-linux-${ARCH_ID}.tar.gz"
+        TAR_FILE_NAME="buildg-${RELEASE_TAG}-linux-${{ matrix.arch }}.tar.gz"
         SHA256SUM_FILE_NAME="${TAR_FILE_NAME}.sha256sum"
-        PREFIX=$(pwd)/out make
+        PREFIX=$(pwd)/out GOARCH=${{ matrix.arch }} make
         cp ./extras/buildg.sh ./out/
         tar -C ./out/ -zcvf "${OUTPUT_DIR}/${TAR_FILE_NAME}" .
         cat "${OUTPUT_DIR}/${TAR_FILE_NAME}" | tar -zv --list
@@ -30,7 +32,7 @@ jobs:
     - name: Save Binary
       uses: actions/upload-artifact@v3
       with:
-        name: builds-${{ env.ARCH_ID }}
+        name: builds-${{ matrix.arch }}
         path: ${{ env.OUTPUT_DIR }}/*
 
   release:
@@ -39,7 +41,6 @@ jobs:
     needs: [build]
     env:
       OUTPUT_DIR: ${{ github.workspace }}/builds
-      ARCH_ID: "amd64"
     steps:
     - uses: actions/checkout@v3
     - name: Download Builds
@@ -58,7 +59,9 @@ jobs:
         EOF
         ASSET_FLAGS=()
         ls -al ${OUTPUT_DIR}/
-        for F in ${OUTPUT_DIR}/builds-${ARCH_ID}/* ; do
-          ASSET_FLAGS+=("-a" "$F")
+        for A in "amd64" "arm64" ; do
+          for F in ${OUTPUT_DIR}/builds-${A}/* ; do
+            ASSET_FLAGS+=("-a" "$F")
+          done
         done
         hub release create "${ASSET_FLAGS[@]}" -F ${GITHUB_WORKSPACE}/release-note.txt --draft "${RELEASE_TAG}"
