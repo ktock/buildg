@@ -36,6 +36,15 @@ type debugController struct {
 	handleStarted bool
 }
 
+type location struct {
+	source *pb.SourceInfo
+	ranges []*pb.Range
+}
+
+func (l *location) String() string {
+	return fmt.Sprintf("%q %+v", l.source.Filename, l.ranges)
+}
+
 func (d *debugController) handle(ctx context.Context, handler *handler) error {
 	if d.handleStarted {
 		return fmt.Errorf("on going handler exists")
