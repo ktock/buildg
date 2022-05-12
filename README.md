@@ -194,27 +194,28 @@ OPTIONS:
    --rootless                   Enable rootless configuration
 ```
 
-#### Debug commands
+### Debug commands
 
 ```
-COMMANDS:
+>>> help
+NAME:
+   handler - Debug command handler
 
-break, b BREAKPOINT_SPEC  set a breakpoint
-  BREAKPOINT_SPEC
-    NUMBER   line number in Dockerfile
-    on-fail  step that returns an error
-breakpoints, bp           list breakpoints
-clear BREAKPOINT_KEY      clear a breakpoint
-clearall                  clear all breakpoints
-next, n                   proceed to the next line
-continue, c               proceed to the next breakpoint
-exec, e [OPTIONS] ARG...  execute command in the step
-  OPTIONS
-    --image          use debugger image
-    --mountroot=DIR  mountpoint to mount the rootfs of the step. ignored if --image isn't specified.
-    --init           execute commands in an initial state of that step (experimental)
-list, ls, l [OPTIONS]     list lines
-  OPTIONS
-    --all  list all lines in the source file
-exit, quit, q             exit the debugging
+USAGE:
+   command [command options] [arguments...]
+
+COMMANDS:
+   break, b         set a breakpoint
+   breakpoints, bp  Show breakpoints
+   clear            Clear a breakpoint. Specify breakpoint key.
+   clearall         Clear all breakpoints
+   next, n          Proceed to the next line
+   continue, c      Proceed to the next breakpoint
+   exec, e          Execute command in the step
+   list, ls, l      list source lines
+   exit, quit, q    exit command
+   help, h          Shows a list of commands or help for one command
+
+GLOBAL OPTIONS:
+   --help, -h  show help
 ```
