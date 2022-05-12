@@ -263,7 +263,7 @@ If `ARGS` isn't provided, `/bin/sh` is used by default.
 Flags:
 
 - `--image`: Execute command in the debuger image specified by `--image` flag of [`buildg debug`](#buildg-debug). If not specified, the command is executed on the rootfs of the current step.
-- `--mountroot value`: Mountpoint to mount the rootfs of the step. ignored if `--image` isn't specified.
+- `--mountroot value`: Mountpoint to mount the rootfs of the step. ignored if `--image` isn't specified. (default: `/debugroot`)
 - `--init-state`: Execute commands in an initial state of that step (experimental)
 - `--tty`, `-t`: Allocate tty (enabled by default)
 - `-i`: Enable stdin. (FIXME: must be set with tty) (enabled by default)
