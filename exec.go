@@ -32,6 +32,7 @@ If ARGS isn't provided, "/bin/sh" is used by default.
 			cli.StringFlag{
 				Name:  "mountroot",
 				Usage: "Mountpoint to mount the rootfs of the current step. Ignored if --image isn't specified.",
+				Value: "/debugroot",
 			},
 			cli.BoolFlag{
 				Name:  "init-state",
@@ -122,12 +123,8 @@ func (h *handler) execContainer(ctx context.Context, cfg containerConfig) error 
 		})
 	}
 	if cfg.image != nil {
-		mountroot := "/debugroot"
-		if cfg.mountroot != "" {
-			mountroot = cfg.mountroot
-		}
 		for i := range mounts {
-			mounts[i].Dest = filepath.Join(mountroot, mounts[i].Dest)
+			mounts[i].Dest = filepath.Join(cfg.mountroot, mounts[i].Dest)
 		}
 		mounts = append([]gwclient.Mount{
 			{
