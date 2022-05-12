@@ -12,9 +12,10 @@ import (
 
 func listCommand(ctx context.Context, hCtx *handlerContext) cli.Command {
 	return cli.Command{
-		Name:    "list",
-		Aliases: []string{"ls", "l"},
-		Usage:   "list source lines",
+		Name:      "list",
+		Aliases:   []string{"ls", "l"},
+		Usage:     "list source lines",
+		UsageText: "list [OPTIONS]",
 		Flags: []cli.Flag{
 			cli.BoolFlag{
 				Name:  "all",

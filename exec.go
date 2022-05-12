@@ -20,32 +20,36 @@ func execCommand(ctx context.Context, hCtx *handlerContext) cli.Command {
 		Name:    "exec",
 		Aliases: []string{"e"},
 		Usage:   "Execute command in the step",
+		UsageText: `exec [OPTIONS] [ARGS...]
+
+If ARGS isn't provided, "/bin/sh" is used by default.
+`,
 		Flags: []cli.Flag{
 			cli.BoolFlag{
 				Name:  "image",
-				Usage: "use debuger image",
+				Usage: "Execute command in the debuger image. If not specified, the command is executed on the rootfs of the current step.",
 			},
 			cli.StringFlag{
 				Name:  "mountroot",
-				Usage: "mountpoint to mount the rootfs of the step. ignored if --image isn't specified.",
+				Usage: "Mountpoint to mount the rootfs of the current step. Ignored if --image isn't specified.",
 			},
 			cli.BoolFlag{
 				Name:  "init-state",
-				Usage: "execute commands in an initial state of that step (experimental)",
+				Usage: "Execute commands in an initial state of that step (experimental)",
 			},
 			cli.BoolTFlag{
 				Name:  "tty,t",
-				Usage: "allocate tty (enabled by default)",
+				Usage: "Allocate tty (enabled by default)",
 			},
 			cli.BoolTFlag{
 				Name:  "i",
-				Usage: "enable stdin (FIXME: must be set with tty) (enabled by default)",
+				Usage: "Enable stdin (FIXME: must be set with tty) (enabled by default)",
 			},
 		},
 		Action: func(clicontext *cli.Context) error {
 			args := clicontext.Args()
-			if len(args) == 0 {
-				return fmt.Errorf("arguments must be specified")
+			if len(args) == 0 || args[0] == "" {
+				args = []string{"/bin/sh"}
 			}
 			flagI := clicontext.Bool("i")
 			flagT := clicontext.Bool("tty")
