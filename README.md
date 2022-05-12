@@ -1,3 +1,6 @@
+[[⬇️ **Download]**](https://github.com/ktock/buildg/releases)
+[[📖 **Command reference]**](#command-reference)
+
 # buildg: A tool to interactively debug Dockerfile
 
 `buildg` is a tool to interactively debug Dockerfile based on [BuildKit](https://github.com/moby/buildkit).
@@ -21,6 +24,8 @@ To use your own image for debugging steps:
 ```
 buildg debug --image=debugging-tools /path/to/build/context
 ```
+
+For the detailed command refenrece, refer to [Command reference](#command-reference) in the following
 
 ### Exmaple
 
@@ -153,69 +158,140 @@ Leveraging the generic features added through the work, this project implements 
 - [cntr](https://github.com/Mic92/cntr) : allows attaching and debugging containers but no interactive debugging for builds.
 - [ctr by containerd](https://github.com/containerd/containerd) : allows directly controlling and inspecting containerd resources (e.g. contents, snapshots, etc.) but no interactive debugging for builds.
 
-## Command reference
+---
 
-```console
-$ buildg --help
-NAME:
-   buildg - A debug tool for Dockerfile based on BuildKit
+# Command reference
 
-USAGE:
-   buildg [global options] command [command options] [arguments...]
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-COMMANDS:
-   debug    Debug a build
-   version  Version info
-   help, h  Shows a list of commands or help for one command
+- [buildg debug](#buildg-debug)
+- [Debug shell commands](#debug-shell-commands)
+  - [break](#break)
+  - [breakpoints](#breakpoints)
+  - [clear](#clear)
+  - [clearall](#clearall)
+  - [next](#next)
+  - [continue](#continue)
+  - [exec](#exec)
+  - [list](#list)
+  - [exit](#exit)
+  - [help](#help)
 
-GLOBAL OPTIONS:
-   --debug     enable debug logs
-   --help, -h  show help
-```
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-### buildg debug
+## buildg debug
 
-```console
-$ buildg debug --help
-NAME:
-   buildg debug - Debug a build
+Debug a build. This starts building the specified Dockerfile and launches a debug session.
 
-USAGE:
-   buildg debug [command options] [arguments...]
+Usage: `buildg debug [OPTIONS] CONTEXT`
 
-OPTIONS:
-   --file value, -f value       Name of the Dockerfile
-   --target value               Target build stage to build.
-   --build-arg value            Build-time variables
-   --oci-worker-net value       Worker network type: "auto", "cni", "host" (default: "auto")
-   --image value                Image to use for debugging stage
-   --oci-cni-config-path value  Path to CNI config file (default: "/etc/buildkit/cni.json")
-   --oci-cni-binary-path value  Path to CNI plugin binary dir (default: "/opt/cni/bin")
-   --rootless                   Enable rootless configuration
-```
+Flags:
 
-### Debug commands
+- `--file value`, `-f value`: Name of the Dockerfile
+- `--target value`: Target build stage to build.
+- `--build-arg value`: Build-time variables
+- `--oci-worker-net value`: Worker network type: "auto", "cni", "host" (default: "auto")
+- `--image value`: Image to use for debugging stage. Specify `--image` flag for [`exec`](#exec) command in debug shell when use this image.
+- `--oci-cni-config-path value`: Path to CNI config file (default: "/etc/buildkit/cni.json")
+- `--oci-cni-binary-path value`: Path to CNI plugin binary dir (default: "/opt/cni/bin")
+- `--rootless`: Enable rootless configuration
 
-```
->>> help
-NAME:
-   handler - Debug command handler
+## Debug shell commands
 
-USAGE:
-   command [command options] [arguments...]
+### break
 
-COMMANDS:
-   break, b         set a breakpoint
-   breakpoints, bp  Show breakpoints
-   clear            Clear a breakpoint. Specify breakpoint key.
-   clearall         Clear all breakpoints
-   next, n          Proceed to the next line
-   continue, c      Proceed to the next breakpoint
-   exec, e          Execute command in the step
-   list, ls, l      list source lines
-   exit, quit, q    exit command
-   help, h          Shows a list of commands or help for one command
+Set a breakpoint.
 
-GLOBAL OPTIONS:
-   --help, -h  show help
-```
+Alias: `b`
+
+Usage: `break BREAKPOINT`
+
+The following value can be set as a `BREAKPOINT`.
+
+- line number: breaks at the line number in Dockerfile
+- `on-fail`: breaks on step that returns an error
+
+### breakpoints
+
+Show breakpoints key-value pairs.
+
+Alias: `bp`
+
+Usage: `breakpoints`
+
+### clear
+
+Clear a breakpoint. Specify breakpoint key.
+
+Usage: `clear BREAKPOINT_KEY`
+
+`BREAKPOINT_KEY` is the key of a breakpoint which is printed when executing `breakpoints` command.
+
+### clearall
+
+Clear all breakpoints.
+
+Usage: `clearall`
+
+### next
+
+Proceed to the next line
+
+Alias: `n`
+
+Usage: `next`
+
+### continue
+
+Proceed to the next breakpoint
+
+Alias: `c`
+
+Usage: `continue`
+
+### exec
+
+Execute command in the step
+
+Alias: `e`
+
+Usage: `exec [OPTIONS] [ARGS...]`
+
+If `ARGS` isn't provided, `/bin/sh` is used by default.
+
+Flags:
+
+- `--image`: Execute command in the debuger image specified by `--image` flag of [`buildg debug`](#buildg-debug). If not specified, the command is executed on the rootfs of the current step.
+- `--mountroot value`: Mountpoint to mount the rootfs of the step. ignored if `--image` isn't specified.
+- `--init-state`: Execute commands in an initial state of that step (experimental)
+- `--tty`, `-t`: Allocate tty (enabled by default)
+- `-i`: Enable stdin. (FIXME: must be set with tty) (enabled by default)
+
+### list
+
+List source lines
+
+Aliases: `ls`, `l`
+
+Usage: `list [OPTIONS]`
+
+Flags:
+
+- `--all`: show all lines
+
+### exit
+
+Exit command
+
+Aliases: `quit`, `q`
+
+Usage: `exit`
+
+### help
+
+Shows a list of commands or help for one command
+
+Alias: `h`
+
+Usage: `help [COMMAND]`
