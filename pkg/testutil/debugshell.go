@@ -16,6 +16,7 @@ import (
 )
 
 const buildgPathEnv = "TEST_BUILDG_PATH"
+const BuildgTestTmpDirEnv = "TEST_BUILDG_TMP_DIR"
 
 func getBuildgBinary(t *testing.T) string {
 	buildgCmd := "buildg"

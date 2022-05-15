@@ -1,4 +1,4 @@
-package main
+package buildkit
 
 import (
 	"context"
@@ -20,13 +20,13 @@ import (
 
 func newDebugController() *debugController {
 	return &debugController{
-		eventCh: make(chan *registeredStatus),
+		eventCh: make(chan *RegisteredStatus),
 		pause:   make(map[string]*chan struct{}),
 	}
 }
 
 type debugController struct {
-	eventCh chan *registeredStatus
+	eventCh chan *RegisteredStatus
 	pause   map[string]*chan struct{}
 	mu      sync.Mutex
 
@@ -36,16 +36,7 @@ type debugController struct {
 	handleStarted bool
 }
 
-type location struct {
-	source *pb.SourceInfo
-	ranges []*pb.Range
-}
-
-func (l *location) String() string {
-	return fmt.Sprintf("%q %+v", l.source.Filename, l.ranges)
-}
-
-func (d *debugController) handle(ctx context.Context, handler *handler) error {
+func (d *debugController) handle(ctx context.Context, handler *Handler) error {
 	if d.handleStarted {
 		return fmt.Errorf("on going handler exists")
 	}
@@ -58,8 +49,8 @@ func (d *debugController) handle(ctx context.Context, handler *handler) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case msg := <-d.eventCh:
-			logrus.Debugf("got debug event %q", msg.debugID)
-			if locs, err := d.getLocation(msg.vertex.String()); err != nil {
+			logrus.Debugf("got debug event %q", msg.DebugID)
+			if locs, err := d.getLocation(msg.Vertex.String()); err != nil {
 				logrus.WithError(err).Debug("failed to get location info")
 			} else {
 				if err := handler.handle(ctx, msg, locs); err != nil {
@@ -69,12 +60,12 @@ func (d *debugController) handle(ctx context.Context, handler *handler) error {
 					return err
 				}
 			}
-			d.continueID(msg.debugID)
+			d.continueID(msg.DebugID)
 		}
 	}
 }
 
-func (d *debugController) addLocation(source *pb.Source) {
+func (d *debugController) addLocationSource(source *pb.Source) {
 	d.sourcesMu.Lock()
 	if d.sources == nil {
 		d.sources = make(map[*pb.Source]int)
@@ -88,7 +79,7 @@ func (d *debugController) addLocation(source *pb.Source) {
 	d.sourcesMu.Unlock()
 }
 
-func (d *debugController) deleteLocation(source *pb.Source) {
+func (d *debugController) deleteLocationSource(source *pb.Source) {
 	d.sourcesMu.Lock()
 	if _, ok := d.sources[source]; ok {
 		d.sources[source]--
@@ -99,13 +90,13 @@ func (d *debugController) deleteLocation(source *pb.Source) {
 	d.sourcesMu.Unlock()
 }
 
-func (d *debugController) getLocation(v string) (locs []*location, err error) {
+func (d *debugController) getLocation(v string) (locs []*Location, err error) {
 	d.sourcesMu.Lock()
 	defer d.sourcesMu.Unlock()
 	for s := range d.sources {
 		if locsInfo, ok := s.Locations[v]; ok {
 			for _, loc := range locsInfo.Locations {
-				locs = append(locs, &location{s.Infos[loc.SourceIndex], loc.Ranges})
+				locs = append(locs, &Location{s.Infos[loc.SourceIndex], loc.Ranges})
 			}
 		}
 	}
@@ -153,8 +144,8 @@ type debugFrontendBridge struct {
 func (f *debugFrontendBridge) Solve(ctx context.Context, req frontend.SolveRequest, sid string) (*frontend.Result, error) {
 	req.Evaluate = true
 	if req.Definition != nil && req.Definition.Source != nil {
-		f.debugController.addLocation(req.Definition.Source)
-		defer f.debugController.deleteLocation(req.Definition.Source)
+		f.debugController.addLocationSource(req.Definition.Source)
+		defer f.debugController.deleteLocationSource(req.Definition.Source)
 	}
 	return f.FrontendLLBBridge.Solve(ctx, req, sid)
 }
@@ -171,8 +162,8 @@ type debugGatewayClient struct {
 func (c *debugGatewayClient) Solve(ctx context.Context, req gwclient.SolveRequest) (*gwclient.Result, error) {
 	req.Evaluate = true
 	if req.Definition != nil && req.Definition.Source != nil {
-		c.debugController.addLocation(req.Definition.Source)
-		defer c.debugController.deleteLocation(req.Definition.Source)
+		c.debugController.addLocationSource(req.Definition.Source)
+		defer c.debugController.deleteLocationSource(req.Definition.Source)
 	}
 	return c.Client.Solve(ctx, req)
 }
@@ -214,6 +205,7 @@ func (d *debugWorkerWrapper) WorkerRefByID(id string) (*worker.WorkerRef, bool) 
 }
 
 type status struct {
+	name   string
 	inputs []solver.Result
 	mounts []solver.Result
 	vertex digest.Digest
@@ -221,13 +213,14 @@ type status struct {
 	err    error
 }
 
-type registeredStatus struct {
-	debugID  string
-	inputIDs []string
-	mountIDs []string
-	vertex   digest.Digest
-	op       *pb.Op
-	err      error
+type RegisteredStatus struct {
+	Name     string
+	DebugID  string
+	InputIDs []string
+	MountIDs []string
+	Vertex   digest.Digest
+	Op       *pb.Op
+	Err      error
 }
 
 func (d *debugWorkerWrapper) notifyAndWait(ctx context.Context, s status) error {
@@ -245,13 +238,14 @@ func (d *debugWorkerWrapper) notifyAndWait(ctx context.Context, s status) error 
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
-	case d.controller.eventCh <- &registeredStatus{
-		debugID:  id,
-		vertex:   s.vertex,
-		op:       s.op,
-		inputIDs: inputIDs,
-		mountIDs: mountIDs,
-		err:      s.err,
+	case d.controller.eventCh <- &RegisteredStatus{
+		Name:     s.name,
+		DebugID:  id,
+		Vertex:   s.vertex,
+		Op:       s.op,
+		InputIDs: inputIDs,
+		MountIDs: mountIDs,
+		Err:      s.err,
 	}:
 	}
 	select {
@@ -290,6 +284,7 @@ func (o *debugOpWrapper) LoadCacheHook(ctx context.Context, inputs []solver.Resu
 	logrus.Infof("CACHED %v", o.vertex.Name())
 	execInputs, execMounts := o.getResultMounts(inputs, outputs)
 	if err := o.worker.notifyAndWait(ctx, status{
+		name:   o.vertex.Name(),
 		inputs: execInputs,
 		mounts: execMounts,
 		vertex: o.vertex.Digest(),
@@ -312,6 +307,7 @@ func (o *debugOpWrapper) Exec(ctx context.Context, g session.Group, inputs []sol
 		execInputs, execMounts = o.getResultMounts(inputs, outputs)
 	}
 	if nErr := o.worker.notifyAndWait(ctx, status{
+		name:   o.vertex.Name(),
 		inputs: execInputs,
 		mounts: execMounts,
 		vertex: o.vertex.Digest(),

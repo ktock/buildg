@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/moby/buildkit/solver/pb"
+	"github.com/ktock/buildg/pkg/buildkit"
 	"github.com/urfave/cli"
 )
 
@@ -28,17 +28,18 @@ on-fail  breaks on step that returns an error
 			}
 			h := hCtx.handler
 			var key string
-			var b breakpoint
+			var b buildkit.Breakpoint
 			if bp == "on-fail" {
 				key = "on-fail"
-				b = newOnFailBreakpoint()
+				b = buildkit.NewOnFailBreakpoint()
 			} else if l, err := strconv.ParseInt(bp, 10, 64); err == nil {
-				b = newLineBreakpoint(hCtx.locs[0].source.Filename, l)
+				b = buildkit.NewLineBreakpoint(hCtx.locs[0].Source.Filename, l)
 			}
 			if b == nil {
 				return fmt.Errorf("cannot parse breakpoint %q", bp)
 			}
-			return h.breakpoints.add(key, b)
+			_, err := h.Breakpoints().Add(key, b)
+			return err
 		},
 	}
 }
@@ -50,8 +51,8 @@ func breakpointsCommand(ctx context.Context, hCtx *handlerContext) cli.Command {
 		Usage:     "Show breakpoints key-value pairs",
 		UsageText: "breakpoints",
 		Action: func(clicontext *cli.Context) error {
-			hCtx.handler.breakpoints.forEach(func(key string, b breakpoint) bool {
-				fmt.Printf("[%s]: %v\n", key, b)
+			hCtx.handler.Breakpoints().ForEach(func(key string, b buildkit.Breakpoint) bool {
+				fmt.Fprintf(hCtx.stdout, "[%s]: %v\n", key, b)
 				return true
 			})
 			return nil
@@ -72,10 +73,10 @@ BREAKPOINT_KEY is the key of a breakpoint which is printed when executing "break
 			if bpKey == "" {
 				return fmt.Errorf("breakpoint key must be set")
 			}
-			if _, ok := hCtx.handler.breakpoints.get(bpKey); !ok {
+			if _, ok := hCtx.handler.Breakpoints().Get(bpKey); !ok {
 				return fmt.Errorf("breakpoint %q not found", bpKey)
 			}
-			hCtx.handler.breakpoints.clear(bpKey)
+			hCtx.handler.Breakpoints().Clear(bpKey)
 			return nil
 		},
 	}
@@ -87,7 +88,7 @@ func clearAllCommand(ctx context.Context, hCtx *handlerContext) cli.Command {
 		Usage:     "Clear all breakpoints",
 		UsageText: "clearall",
 		Action: func(clicontext *cli.Context) error {
-			hCtx.handler.breakpoints.clearAll()
+			hCtx.handler.Breakpoints().ClearAll()
 			return nil
 		},
 	}
@@ -100,7 +101,7 @@ func nextCommand(ctx context.Context, hCtx *handlerContext) cli.Command {
 		Usage:     "Proceed to the next line",
 		UsageText: "next",
 		Action: func(clicontext *cli.Context) error {
-			hCtx.handler.breakEachVertex = true
+			hCtx.handler.BreakEachVertex(true)
 			hCtx.continueRead = false
 			return nil
 		},
@@ -114,58 +115,9 @@ func continueCommand(ctx context.Context, hCtx *handlerContext) cli.Command {
 		Usage:     "Proceed to the next breakpoint",
 		UsageText: "continue",
 		Action: func(clicontext *cli.Context) error {
-			hCtx.handler.breakEachVertex = false
+			hCtx.handler.BreakEachVertex(false)
 			hCtx.continueRead = false
 			return nil
 		},
 	}
-}
-
-func newLineBreakpoint(filename string, line int64) breakpoint {
-	return &lineBreakpoint{filename, line}
-}
-
-type lineBreakpoint struct {
-	filename string
-	line     int64
-}
-
-func (b *lineBreakpoint) isTarget(ctx context.Context, info breakpointContext) (bool, string, error) {
-	for _, loc := range info.locs {
-		if loc.source.Filename != b.filename {
-			continue
-		}
-		for _, r := range loc.ranges {
-			if int64(r.Start.Line) <= b.line && b.line <= int64(r.End.Line) {
-				return true, "reached " + b.String(), nil
-			}
-		}
-	}
-	return false, "", nil
-}
-
-func (b *lineBreakpoint) String() string {
-	return fmt.Sprintf("line: %s:%d", b.filename, b.line)
-}
-
-func (b *lineBreakpoint) addMark(source *pb.SourceInfo, line int64) bool {
-	return source.Filename == b.filename && line == b.line
-}
-
-func newOnFailBreakpoint() breakpoint {
-	return &onFailBreakpoint{}
-}
-
-type onFailBreakpoint struct{}
-
-func (b *onFailBreakpoint) isTarget(ctx context.Context, info breakpointContext) (bool, string, error) {
-	return info.status.err != nil, fmt.Sprintf("caught error %v", info.status.err), nil
-}
-
-func (b *onFailBreakpoint) String() string {
-	return "breaks on fail"
-}
-
-func (b *onFailBreakpoint) addMark(source *pb.SourceInfo, line int64) bool {
-	return false
 }

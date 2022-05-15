@@ -11,8 +11,6 @@ import (
 	"github.com/ktock/buildg/pkg/testutil"
 )
 
-const buildgTestTmpDirEnv = "TEST_BUILDG_TMP_DIR"
-
 func TestCacheReuse(t *testing.T) {
 	t.Parallel()
 	tmpCtx, doneTmpCtx := testutil.NewTempContext(t, fmt.Sprintf(`FROM %s
@@ -22,7 +20,7 @@ RUN date > /
 `, testutil.Mirror("busybox:1.32.0")))
 	defer doneTmpCtx()
 
-	tmpRoot, err := os.MkdirTemp(os.Getenv(buildgTestTmpDirEnv), "buildg-test-tmproot")
+	tmpRoot, err := os.MkdirTemp(os.Getenv(testutil.BuildgTestTmpDirEnv), "buildg-test-tmproot")
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -120,7 +118,7 @@ RUN date > /a
 `, testutil.Mirror("busybox:1.32.0")))
 	defer doneTmpCtx()
 
-	tmpRoot, err := os.MkdirTemp(os.Getenv(buildgTestTmpDirEnv), "buildg-test-tmproot")
+	tmpRoot, err := os.MkdirTemp(os.Getenv(testutil.BuildgTestTmpDirEnv), "buildg-test-tmproot")
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -181,7 +179,7 @@ RUN --mount=type=bind,target=/root/mnt cat /root/mnt/data/hi > /a && date > /b
 		t.Fatal(err)
 	}
 
-	tmpRoot, err := os.MkdirTemp(os.Getenv(buildgTestTmpDirEnv), "buildg-test-tmproot")
+	tmpRoot, err := os.MkdirTemp(os.Getenv(testutil.BuildgTestTmpDirEnv), "buildg-test-tmproot")
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -226,7 +224,7 @@ RUN date > /ok
 `, testutil.Mirror("busybox:1.32.0"), testutil.Mirror("busybox:1.32.0")))
 	defer doneTmpCtx()
 
-	tmpRoot, err := os.MkdirTemp(os.Getenv(buildgTestTmpDirEnv), "buildg-test-tmproot")
+	tmpRoot, err := os.MkdirTemp(os.Getenv(testutil.BuildgTestTmpDirEnv), "buildg-test-tmproot")
 	if err != nil {
 		t.Fatal(err)
 		return

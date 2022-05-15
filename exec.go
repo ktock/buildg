@@ -6,12 +6,11 @@ import (
 	"io"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 
 	"github.com/containerd/console"
+	"github.com/ktock/buildg/pkg/buildkit"
 	gwclient "github.com/moby/buildkit/frontend/gateway/client"
-	"github.com/moby/buildkit/solver/pb"
 	"github.com/urfave/cli"
 )
 
@@ -67,130 +66,51 @@ Only supported on RUN instructions as of now.
 				return fmt.Errorf("flag \"-i\" and \"-t\" must be set together") // FIXME
 			}
 			h := hCtx.handler
-			r, done := h.stdin.use()
+			r, done := hCtx.stdin.use()
 			defer done()
-			cfg := containerConfig{
-				info:       hCtx.info,
-				args:       args,
-				stdout:     os.Stdout,
-				stderr:     os.Stderr,
-				tty:        flagT,
-				mountroot:  clicontext.String("mountroot"),
-				inputMount: clicontext.Bool("init-state"),
-				env:        clicontext.StringSlice("env"),
-				cwd:        clicontext.String("workdir"),
+			cfg := buildkit.ContainerConfig{
+				Info:          hCtx.info,
+				Args:          args,
+				Stdout:        os.Stdout,
+				Stderr:        os.Stderr,
+				Tty:           flagT,
+				Mountroot:     clicontext.String("mountroot"),
+				InputMount:    clicontext.Bool("init-state"),
+				Env:           clicontext.StringSlice("env"),
+				Cwd:           clicontext.String("workdir"),
+				WatchSignal:   watchSignal,
+				GatewayClient: h.GatewayClient(),
 			}
 			if clicontext.Bool("image") {
-				h.imageMu.Lock()
-				cfg.image = h.image
-				h.imageMu.Unlock()
+				cfg.Image = h.DebuggerImage()
 			}
 			if flagI {
-				cfg.stdin = io.NopCloser(r)
+				cfg.Stdin = io.NopCloser(r)
 			}
-			if err := h.execContainer(ctx, cfg); err != nil {
+			proc, cleanup, err := buildkit.ExecContainer(ctx, cfg)
+			if err != nil {
+				return err
+			}
+			defer cleanup()
+			errCh := make(chan error)
+			doneCh := make(chan struct{})
+			go func() {
+				if err := proc.Wait(); err != nil {
+					errCh <- err
+					return
+				}
+				close(doneCh)
+			}()
+			select {
+			case <-doneCh:
+			case <-ctx.Done():
+				return ctx.Err()
+			case err := <-errCh:
 				return fmt.Errorf("process execution failed: %w", err)
 			}
 			return nil
 		},
 	}
-}
-
-type containerConfig struct {
-	info           *registeredStatus
-	args           []string
-	tty            bool
-	stdin          io.ReadCloser
-	stdout, stderr io.WriteCloser
-	image          gwclient.Reference
-	mountroot      string
-	inputMount     bool
-	env            []string
-	cwd            string
-}
-
-func (h *handler) execContainer(ctx context.Context, cfg containerConfig) error {
-	op := cfg.info.op
-	mountIDs := cfg.info.mountIDs
-	if cfg.inputMount {
-		mountIDs = cfg.info.inputIDs
-	}
-	var exec *pb.ExecOp
-	switch op := op.GetOp().(type) {
-	case *pb.Op_Exec:
-		exec = op.Exec
-	default:
-		return fmt.Errorf("this instruction doesn't support exec; try on RUN instructions")
-	}
-	var mounts []gwclient.Mount
-	for i, mnt := range exec.Mounts {
-		mounts = append(mounts, gwclient.Mount{
-			Selector:  mnt.Selector,
-			Dest:      mnt.Dest,
-			ResultID:  mountIDs[i],
-			Readonly:  mnt.Readonly,
-			MountType: mnt.MountType,
-			CacheOpt:  mnt.CacheOpt,
-			SecretOpt: mnt.SecretOpt,
-			SSHOpt:    mnt.SSHOpt,
-		})
-	}
-	if cfg.image != nil {
-		for i := range mounts {
-			mounts[i].Dest = filepath.Join(cfg.mountroot, mounts[i].Dest)
-		}
-		mounts = append([]gwclient.Mount{
-			{
-				Dest:      "/",
-				MountType: pb.MountType_BIND,
-				Ref:       cfg.image,
-			},
-		}, mounts...)
-	}
-
-	ctr, err := h.gwclient.NewContainer(ctx, gwclient.NewContainerRequest{
-		Mounts:      mounts,
-		NetMode:     exec.Network,
-		Platform:    op.Platform,
-		Constraints: op.Constraints,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create debug container: %v", err)
-	}
-	defer ctr.Release(ctx)
-
-	meta := exec.Meta
-	cwd := meta.Cwd
-	if cfg.cwd != "" {
-		cwd = cfg.cwd
-	}
-	proc, err := ctr.Start(ctx, gwclient.StartRequest{
-		Args:         cfg.args,
-		Env:          append(meta.Env, cfg.env...),
-		User:         meta.User,
-		Cwd:          cwd,
-		Tty:          cfg.tty,
-		Stdin:        cfg.stdin,
-		Stdout:       cfg.stdout,
-		Stderr:       cfg.stderr,
-		SecurityMode: exec.Security,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to start container: %w", err)
-	}
-
-	var con console.Console
-	if cfg.tty {
-		con := console.Current()
-		if err := con.SetRaw(); err != nil {
-			return fmt.Errorf("failed to configure terminal: %v", err)
-		}
-		defer con.Reset()
-	}
-	ioCtx, ioCancel := context.WithCancel(ctx)
-	defer ioCancel()
-	watchSignal(ioCtx, proc, con)
-	return proc.Wait()
 }
 
 func watchSignal(ctx context.Context, proc gwclient.ContainerProcess, con console.Console) {
