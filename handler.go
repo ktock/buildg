@@ -147,13 +147,14 @@ func (h *handler) handle(ctx context.Context, info *registeredStatus, locs []*lo
 		logrus.Warnf("no location info: %v", locs)
 		return nil
 	}
-	if h.initialized && !h.breakEachVertex {
-		key, bp, description := h.breakpoints.check(ctx, breakpointContext{info, locs})
-		if bp == nil {
-			logrus.Debugf("skipping non-breakpoint: %v", locs)
-			return nil
-		}
-		fmt.Printf("Breakpoint: %s: %s\n", key, description)
+	isBreakpoint := false
+	for key, bp := range h.breakpoints.check(ctx, breakpointContext{info, locs}) {
+		fmt.Printf("Breakpoint[%s]: %s\n", key, bp.description)
+		isBreakpoint = true
+	}
+	if h.initialized && !h.breakEachVertex && !isBreakpoint {
+		logrus.Debugf("skipping non-breakpoint: %v", locs)
+		return nil
 	}
 	h.initialized = true
 	printLines(h, locs, 3, false)
@@ -293,15 +294,18 @@ func (b *breakpoints) forEach(f func(key string, bp breakpoint) bool) {
 	}
 }
 
-func (b *breakpoints) check(ctx context.Context, info breakpointContext) (hitKey string, hitBP breakpoint, description string) {
+type breakpointInfo struct {
+	breakpoint  breakpoint
+	description string
+}
+
+func (b *breakpoints) check(ctx context.Context, info breakpointContext) (hit map[string]breakpointInfo) {
+	hit = make(map[string]breakpointInfo)
 	b.forEach(func(key string, bp breakpoint) bool {
 		if yes, desc, err := bp.isTarget(ctx, info); err != nil {
 			logrus.WithError(err).Warnf("failed to check breakpoint")
 		} else if yes {
-			hitKey = key
-			hitBP = bp
-			description = desc
-			return false
+			hit[key] = breakpointInfo{bp, desc}
 		}
 		return true
 	})

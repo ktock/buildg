@@ -81,7 +81,7 @@ RUN cat /dummy`, testutil.Mirror("busybox:1.32.0"))
 	defer sh.Close()
 	sh.Do("breakpoints").OutContains("on-fail")
 	sh.Do(execNoTTY("cat /a")).OutEqual("a")
-	sh.Do("c").OutContains("on-fail: caught error process")
+	sh.Do("c").OutContains("Breakpoint[on-fail]")
 
 	sh.Do(execNoTTY("cat /a")).OutEqual("a")
 	sh.Do(execNoTTY("cat /dummy")).OutContains("process execution failed")
