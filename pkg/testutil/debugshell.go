@@ -1,13 +1,16 @@
 package testutil
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/moby/buildkit/identity"
 )
@@ -32,11 +35,18 @@ func Mirror(ref string) string {
 }
 
 type DebugShell struct {
-	t      *testing.T
-	cmd    *exec.Cmd
-	stdin  io.Writer
-	stdout io.Reader
-	prompt string
+	t          *testing.T
+	cmd        *exec.Cmd
+	stdin      io.Writer
+	stdout     *bytes.Buffer
+	stderr     *bytes.Buffer
+	stdoutDump *bytes.Buffer
+	prompt     string
+
+	waitMu     sync.Mutex
+	waitDone   bool
+	waitErr    error
+	waitDoneCh chan struct{}
 }
 
 type Output struct {
@@ -47,7 +57,7 @@ type Output struct {
 func (o *Output) OutEqual(s string) *Output {
 	o.sh.t.Log("stdout:\n" + string(o.stdout))
 	if s != string(o.stdout) {
-		o.sh.t.Fatalf("unexpected stdout\nwanted:\n%s\ngot:\n%s", s, o.stdout)
+		o.sh.fatal(fmt.Sprintf("unexpected stdout\nwanted:\n%s\ngot:\n%s", s, o.stdout))
 	}
 	return o
 }
@@ -55,7 +65,7 @@ func (o *Output) OutEqual(s string) *Output {
 func (o *Output) OutContains(s string) *Output {
 	o.sh.t.Log("stdout:\n" + string(o.stdout))
 	if !strings.Contains(string(o.stdout), s) {
-		o.sh.t.Fatalf("unexpected stdout\nmust include:\n%s\ngot:\n%s", s, o.stdout)
+		o.sh.fatal(fmt.Sprintf("unexpected stdout\nmust include:\n%s\ngot:\n%s", s, o.stdout))
 	}
 	return o
 }
@@ -63,7 +73,7 @@ func (o *Output) OutContains(s string) *Output {
 func (o *Output) OutNotContains(s string) *Output {
 	o.sh.t.Log("stdout:\n" + string(o.stdout))
 	if strings.Contains(string(o.stdout), s) {
-		o.sh.t.Fatalf("unexpected stdout\nmust NOT include:\n%s\ngot:\n%s", s, o.stdout)
+		o.sh.fatal(fmt.Sprintf("unexpected stdout\nmust NOT include:\n%s\ngot:\n%s", s, o.stdout))
 	}
 	return o
 }
@@ -103,19 +113,42 @@ func NewDebugShell(t *testing.T, buildCtx string, opts ...DebugShellOption) *Deb
 	if err != nil {
 		t.Fatal(err)
 	}
-	stdoutP, err := cmd.StdoutPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	// TODO: enable to dump stderr if needed
+	stdout := new(bytes.Buffer)
+	stdoutDump := new(bytes.Buffer)
+	stderr := new(bytes.Buffer)
+	cmd.Stdout = io.MultiWriter(stdout, stdoutDump)
+	cmd.Stderr = stderr
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
-	sh := &DebugShell{t, cmd, stdinP, stdoutP, prompt}
+	sh := &DebugShell{
+		t:          t,
+		cmd:        cmd,
+		stdin:      stdinP,
+		stdout:     stdout,
+		stderr:     stderr,
+		stdoutDump: stdoutDump,
+		prompt:     prompt,
+		waitDoneCh: make(chan struct{}),
+	}
+	go func() {
+		err := cmd.Wait()
+		sh.waitMu.Lock()
+		sh.waitDone, sh.waitErr = true, err
+		sh.waitMu.Unlock()
+		close(sh.waitDoneCh)
+	}()
 	if _, err := sh.readUntilPrompt(); err != nil {
-		t.Fatal(err)
+		sh.fatal(err.Error())
 	}
 	return sh
+}
+
+func (sh *DebugShell) wait() error {
+	<-sh.waitDoneCh
+	sh.waitMu.Lock()
+	defer sh.waitMu.Unlock()
+	return sh.waitErr
 }
 
 func (sh *DebugShell) Do(args string) *Output {
@@ -123,40 +156,53 @@ func (sh *DebugShell) Do(args string) *Output {
 		return &Output{sh, nil}
 	}
 	stdout, err := sh.readUntilPrompt()
-	if err != nil {
-		sh.t.Fatalf("failed to read stdout: %v", err)
+	if err != nil && err != io.EOF {
+		sh.fatal(fmt.Sprintf("failed to read stdout: %v", err))
 	}
 	return &Output{sh, stdout}
 }
 
 func (sh *DebugShell) readUntilPrompt() (out []byte, retErr error) {
-	buf := make([]byte, 4096)
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
 	for {
-		n, err := sh.stdout.Read(buf)
-		if n > 0 {
-			out = append(out, buf[:n]...)
-		}
+		<-ticker.C
+		got, err := io.ReadAll(sh.stdout)
+		out = append(out, got...)
 		if err != nil {
-			if err == io.EOF {
-				return out, nil
-			}
 			return out, err
 		}
 		if i := strings.LastIndex(string(out), sh.prompt); i >= 0 {
 			out = out[:i]
 			return out, nil
 		}
+		sh.waitMu.Lock()
+		isDone := sh.waitDone
+		sh.waitMu.Unlock()
+		if isDone {
+			return out, nil
+		}
 	}
 }
 
+func (sh *DebugShell) fatal(mes string) {
+	sh.dump()
+	sh.t.Fatal(mes)
+}
+
+func (sh *DebugShell) dump() {
+	sh.t.Log("stdout log:\n" + sh.stdoutDump.String())
+	sh.t.Log("stderr log:\n" + sh.stderr.String())
+}
+
 func (sh *DebugShell) Wait() error {
-	return sh.cmd.Wait()
+	return sh.wait()
 }
 
 func (sh *DebugShell) Close() error {
 	sh.Do("exit")
 	sh.cmd.Process.Kill()
-	return sh.cmd.Wait()
+	return sh.wait()
 }
 
 func NewTempContext(t *testing.T, dt string) (p string, done func() error) {

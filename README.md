@@ -254,7 +254,8 @@ Usage: `continue`
 
 ### exec
 
-Execute command in the step
+Execute command in the step.
+Only supported on RUN instructions as of now.
 
 Alias: `e`
 

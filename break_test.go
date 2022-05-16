@@ -44,6 +44,37 @@ RUN echo -n d > /d`, testutil.Mirror("busybox:1.32.0"))
 	}
 }
 
+func TestBreakpointNonExec(t *testing.T) {
+	t.Parallel()
+	dt := fmt.Sprintf(`FROM %s AS base
+RUN echo -n a > /a
+
+FROM %s
+RUN echo -n b > /b
+COPY --from=base /a /
+RUN echo -n c > /c`, testutil.Mirror("busybox:1.32.0"), testutil.Mirror("alpine:3.15.3"))
+	fmt.Printf(dt)
+	tmpCtx, doneTmpCtx := testutil.NewTempContext(t, dt)
+	defer doneTmpCtx()
+
+	sh := testutil.NewDebugShell(t, tmpCtx)
+	defer sh.Close()
+	sh.Do("break 6")
+	sh.Do("breakpoints").OutContains("line: Dockerfile:6")
+
+	sh.Do("c").OutContains("reached line: Dockerfile:6")
+	sh.Do("next")
+	sh.Do(execNoTTY("cat /a")).OutEqual("a")
+	sh.Do(execNoTTY("cat /b")).OutEqual("b")
+	sh.Do(execNoTTY("cat /c")).OutEqual("c")
+
+	sh.Do("c")
+
+	if err := sh.Wait(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestNext(t *testing.T) {
 	t.Parallel()
 	dt := fmt.Sprintf(`FROM %s
@@ -55,6 +86,8 @@ RUN echo -n b > /b`, testutil.Mirror("busybox:1.32.0"))
 
 	sh := testutil.NewDebugShell(t, tmpCtx)
 	defer sh.Close()
+	sh.Do("n")
+
 	sh.Do(execNoTTY("cat /a")).OutEqual("a")
 	sh.Do(execNoTTY("cat /b")).OutContains("process execution failed")
 	sh.Do("n")
@@ -80,6 +113,8 @@ RUN cat /dummy`, testutil.Mirror("busybox:1.32.0"))
 	sh := testutil.NewDebugShell(t, tmpCtx)
 	defer sh.Close()
 	sh.Do("breakpoints").OutContains("on-fail")
+
+	sh.Do("next")
 	sh.Do(execNoTTY("cat /a")).OutEqual("a")
 	sh.Do("c").OutContains("Breakpoint[on-fail]")
 
@@ -103,6 +138,7 @@ RUN echo -n b > /b`, testutil.Mirror("busybox:1.32.0"))
 
 	sh := testutil.NewDebugShell(t, tmpCtx)
 	defer sh.Close()
+	sh.Do("n")
 	sh.Do(execNoTTY("cat /a")).OutEqual("a")
 	sh.Do(execNoTTY("cat /b")).OutContains("process execution failed")
 	sh.Do("exit")
