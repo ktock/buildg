@@ -7,9 +7,9 @@ import (
 	"io"
 	"os"
 	"sort"
-	"strings"
 	"sync"
 
+	"github.com/google/shlex"
 	"github.com/moby/buildkit/client/llb"
 	gwclient "github.com/moby/buildkit/frontend/gateway/client"
 	"github.com/moby/buildkit/solver/pb"
@@ -162,7 +162,9 @@ func (h *handler) handle(ctx context.Context, info *registeredStatus, locs []*lo
 		if err != nil {
 			return err
 		}
-		if args := strings.Split(ln, " "); len(args) > 0 {
+		if args, err := shlex.Split(ln); err != nil {
+			logrus.WithError(err).Warnf("failed to parse line")
+		} else if len(args) > 0 {
 			cont, err := h.dispatch(ctx, info, locs, args)
 			if err != nil {
 				return err
