@@ -68,11 +68,37 @@ func (o *Output) OutNotContains(s string) *Output {
 	return o
 }
 
-func NewDebugShell(t *testing.T, buildCtx string, options ...string) *DebugShell {
+type options struct {
+	opts []string
+	env  []string
+}
+
+type DebugShellOption func(*options)
+
+func WithOptions(opts ...string) DebugShellOption {
+	return func(o *options) {
+		o.opts = append(o.opts, opts...)
+	}
+}
+
+func WithEnv(env ...string) DebugShellOption {
+	return func(o *options) {
+		o.env = env
+	}
+}
+
+func NewDebugShell(t *testing.T, buildCtx string, opts ...DebugShellOption) *DebugShell {
+	gotOpts := options{}
+	for _, o := range opts {
+		o(&gotOpts)
+	}
+
 	buildgCmd := getBuildgBinary(t)
 	prompt := identity.NewID()
-	cmd := exec.Command(buildgCmd, append(append([]string{"debug"}, options...), buildCtx)...)
-	cmd.Env = append(os.Environ(), "BUILDG_PS1"+"="+prompt)
+	args := append(append([]string{"debug"}, gotOpts.opts...), buildCtx)
+	t.Logf("executing %q with args %+v", buildgCmd, args)
+	cmd := exec.Command(buildgCmd, args...)
+	cmd.Env = append(append(os.Environ(), "BUILDG_PS1"+"="+prompt), gotOpts.env...)
 	stdinP, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatal(err)

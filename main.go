@@ -25,6 +25,7 @@ import (
 	"github.com/moby/buildkit/frontend/gateway"
 	"github.com/moby/buildkit/session"
 	"github.com/moby/buildkit/session/auth/authprovider"
+	"github.com/moby/buildkit/session/sshforward/sshprovider"
 	"github.com/moby/buildkit/solver/bboltcachestorage"
 	"github.com/moby/buildkit/util/grpcerrors"
 	"github.com/moby/buildkit/util/network/cniprovider"
@@ -116,6 +117,14 @@ func newDebugCommand() cli.Command {
 			cli.StringFlag{
 				Name:  "image",
 				Usage: "Image to use for debugging stage",
+			},
+			cli.StringSliceFlag{
+				Name:  "secret",
+				Usage: "Expose secret value to the build. Format: id=secretname,src=filepath",
+			},
+			cli.StringSliceFlag{
+				Name:  "ssh",
+				Usage: "Allow forwarding SSH agent to the build. Format: default|<id>[=<socket>|<key>[,<key>]]",
 			},
 			cli.StringFlag{
 				Name:  "oci-cni-config-path",
@@ -359,11 +368,30 @@ func parseSolveOpt(clicontext *cli.Context) (*client.SolveOpt, error) {
 	if err != nil {
 		return nil, err
 	}
+	attachable := []session.Attachable{authprovider.NewDockerAuthProvider(os.Stderr)}
+	if ssh := clicontext.StringSlice("ssh"); len(ssh) > 0 {
+		configs, err := build.ParseSSH(ssh)
+		if err != nil {
+			return nil, err
+		}
+		sp, err := sshprovider.NewSSHAgentProvider(configs)
+		if err != nil {
+			return nil, err
+		}
+		attachable = append(attachable, sp)
+	}
+	if secrets := clicontext.StringSlice("secret"); len(secrets) > 0 {
+		secretProvider, err := build.ParseSecret(secrets)
+		if err != nil {
+			return nil, err
+		}
+		attachable = append(attachable, secretProvider)
+	}
 	return &client.SolveOpt{
 		Exports:       exports,
 		LocalDirs:     localDirs,
 		FrontendAttrs: frontendAttrs,
-		Session:       []session.Attachable{authprovider.NewDockerAuthProvider(os.Stderr)},
+		Session:       attachable,
 		// CacheExports:
 		// CacheImports:
 	}, nil
