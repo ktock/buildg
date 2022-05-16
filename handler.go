@@ -155,7 +155,10 @@ func (h *handler) handle(ctx context.Context, info *registeredStatus, locs []*lo
 		}
 		fmt.Printf("Breakpoint: %s: %s\n", key, description)
 	}
-	h.initialized = true
+	if !h.initialized {
+		logrus.Infof("debug session started. type \"help\" for command reference.")
+		h.initialized = true
+	}
 	printLines(h, locs, 3, false)
 	for {
 		ln, err := h.readLine(ctx)
