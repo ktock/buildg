@@ -44,7 +44,7 @@ import (
 
 func main() {
 	app := cli.NewApp()
-	app.Usage = "A debug tool for Dockerfile based on BuildKit"
+	app.Usage = "Interactive debugger for Dockerfile"
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{
 			Name:  "debug",

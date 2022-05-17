@@ -1,7 +1,7 @@
 [[⬇️ **Download]**](https://github.com/ktock/buildg/releases)
 [[📖 **Command reference]**](#command-reference)
 
-# buildg: A tool to interactively debug Dockerfile
+# buildg: Interactive debugger for Dockerfile
 
 `buildg` is a tool to interactively debug Dockerfile based on [BuildKit](https://github.com/moby/buildkit).
 
@@ -48,7 +48,7 @@ Store this Dockerfile to somewhere (e.g. `/tmp/ctx/Dockerfile`) then run `buildg
 
 ```console
 $ buildg.sh debug --image=ubuntu:22.04 /tmp/ctx
-WARN[2022-05-10T10:21:14Z] using host network as the default            
+WARN[2022-05-17T09:01:16Z] using host network as the default            
 #1 [internal] load build definition from Dockerfile
 #1 transferring dockerfile: 195B done
 #1 DONE 0.1s
@@ -58,39 +58,36 @@ WARN[2022-05-10T10:21:14Z] using host network as the default
 #2 DONE 0.1s
 
 #3 [internal] load metadata for docker.io/library/busybox:latest
-#3 DONE 3.1s
+INFO[2022-05-17T09:01:19Z] debug session started. type "help" for command reference. 
+Filename: "Dockerfile"
+ =>   1| FROM busybox AS build1
+      2| RUN echo hello > /hello
+      3| 
+ =>   4| FROM busybox AS build2
+      5| RUN echo hi > /hi
+      6| 
+      7| FROM scratch
+(buildg) break 5
+(buildg) breakpoints
+[0]: line: Dockerfile:5
+[on-fail]: breaks on fail
+(buildg) continue
+#3 DONE 3.2s
 
 #4 [build2 1/2] FROM docker.io/library/busybox@sha256:d2b53584f580310186df7a2055ce3ff83cc0df6caacf1e3489bff8cf5d0af5d8
 #4 resolve docker.io/library/busybox@sha256:d2b53584f580310186df7a2055ce3ff83cc0df6caacf1e3489bff8cf5d0af5d8 0.0s done
-#4 sha256:50e8d59317eb665383b2ef4d9434aeaa394dcd6f54b96bb7810fdde583e9c2d1 772.81kB / 772.81kB 0.2s done
+#4 sha256:50e8d59317eb665383b2ef4d9434aeaa394dcd6f54b96bb7810fdde583e9c2d1 0B / 772.81kB 0.2s
+#4 sha256:50e8d59317eb665383b2ef4d9434aeaa394dcd6f54b96bb7810fdde583e9c2d1 772.81kB / 772.81kB 0.9s done
+Breakpoint[0]: reached line: Dockerfile:5
 Filename: "Dockerfile"
       2| RUN echo hello > /hello
       3| 
       4| FROM busybox AS build2
- =>   5| RUN echo hi > /hi
+*=>   5| RUN echo hi > /hi
       6| 
       7| FROM scratch
       8| COPY --from=build1 /hello /
->>> break 2
->>> breakpoints
-[0]: line: Dockerfile:2
-[on-fail]: breaks on fail
->>> continue
-#4 extracting sha256:50e8d59317eb665383b2ef4d9434aeaa394dcd6f54b96bb7810fdde583e9c2d1 0.0s done
-#4 DONE 0.3s
-
-#5 [build1 2/2] RUN echo hello > /hello
-#5 ...
-
-#6 [build2 2/2] RUN echo hi > /hi
-Breakpoint: line: Dockerfile:2: reached
-Filename: "Dockerfile"
-      1| FROM busybox AS build1
-*=>   2| RUN echo hello > /hello
-      3| 
-      4| FROM busybox AS build2
-      5| RUN echo hi > /hi
->>> exec --image sh
+(buildg) exec --image sh
 # cat /etc/os-release
 PRETTY_NAME="Ubuntu 22.04 LTS"
 NAME="Ubuntu"
@@ -105,11 +102,11 @@ BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
 PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
 UBUNTU_CODENAME=jammy
 # ls /debugroot/
-bin  dev  etc  hello  home  proc  root	tmp  usr  var
-# cat /debugroot/hello
-hello
+bin  dev  etc  hi  home  proc  root  tmp  usr  var
+# cat /debugroot/hi
+hi
 # 
->>> quit
+(buildg) quit
 ```
 
 ## Install
