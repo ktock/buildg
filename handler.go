@@ -20,7 +20,7 @@ import (
 
 const (
 	promptEnvKey  = "BUILDG_PS1"
-	defaultPrompt = ">>> "
+	defaultPrompt = "(buildg) "
 )
 
 var errExit = errors.New("exit")
@@ -215,10 +215,10 @@ func (h *handler) dispatch(ctx context.Context, info *registeredStatus, locs []*
 	}
 	continueRead = true
 	app := cli.NewApp()
-	rootCmd := "handler"
+	rootCmd := "buildg"
 	app.Name = rootCmd
 	app.HelpName = rootCmd
-	app.Usage = "Debug command handler"
+	app.Usage = "Interactive debugger for Dockerfile"
 	app.UsageText = "command [command options] [arguments...]"
 	app.ExitErrHandler = func(context *cli.Context, err error) {}
 	app.UseShortOptionHandling = true

@@ -60,7 +60,7 @@ func (d *debugController) handle(ctx context.Context, handler *handler) error {
 		case msg := <-d.eventCh:
 			logrus.Debugf("got debug event %q", msg.debugID)
 			if locs, err := d.getLocation(msg.vertex.String()); err != nil {
-				logrus.WithError(err).Warnf("failed to get location info")
+				logrus.WithError(err).Debug("failed to get location info")
 			} else {
 				if err := handler.handle(ctx, msg, locs); err != nil {
 					if err == nil && ctx.Err() != nil {
