@@ -20,6 +20,13 @@ RUN echo c > /c`, testutil.Mirror("busybox:1.32.0"))
 	sh := testutil.NewDebugShell(t, tmpCtx)
 	defer sh.Close()
 	sh.Do("ls").OutEqual(fmt.Sprintf(`Filename: "Dockerfile"
+ =>   1| FROM %s
+      2| RUN echo a > /a
+      3| RUN echo b > /b
+      4| RUN echo c > /c
+`, testutil.Mirror("busybox:1.32.0")))
+	sh.Do("next")
+	sh.Do("ls").OutEqual(fmt.Sprintf(`Filename: "Dockerfile"
       1| FROM %s
  =>   2| RUN echo a > /a
       3| RUN echo b > /b

@@ -23,6 +23,7 @@ func execCommand(ctx context.Context, hCtx *handlerContext) cli.Command {
 		UsageText: `exec [OPTIONS] [ARGS...]
 
 If ARGS isn't provided, "/bin/sh" is used by default.
+Only supported on RUN instructions as of now.
 `,
 		Flags: []cli.Flag{
 			cli.BoolFlag{
@@ -107,7 +108,7 @@ func (h *handler) execContainer(ctx context.Context, cfg containerConfig) error 
 	case *pb.Op_Exec:
 		exec = op.Exec
 	default:
-		return fmt.Errorf("op doesn't support debugging")
+		return fmt.Errorf("this instruction doesn't support exec; try on RUN instructions")
 	}
 	var mounts []gwclient.Mount
 	for i, mnt := range exec.Mounts {

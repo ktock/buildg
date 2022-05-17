@@ -25,6 +25,7 @@ RUN echo -n a > /a`, testutil.Mirror("busybox:1.32.0"))
 
 	sh := testutil.NewDebugShell(t, tmpCtx, testutil.WithOptions("--image="+testutil.Mirror("ubuntu:20.04")))
 	defer sh.Close()
+	sh.Do("next")
 	sh.Do(execNoTTY("cat /a")).OutEqual("a")
 	sh.Do(execNoTTY("--image cat /etc/os-release")).OutContains(`NAME="Ubuntu"`)
 	sh.Do(execNoTTY("--image cat /debugroot/a")).OutEqual("a")
@@ -47,6 +48,7 @@ RUN echo foo`, testutil.Mirror("busybox:1.32.0"))
 
 	sh := testutil.NewDebugShell(t, tmpCtx)
 	defer sh.Close()
+	sh.Do("next")
 	sh.Do(execNoTTY(`echo -n "hello world"`)).OutEqual("hello world")
 	sh.Do(execNoTTY(`sh -c "echo -n \"hello world\""`)).OutEqual("hello world")
 	sh.Do(execNoTTY(`sh -c 'echo -n "hello world"'`)).OutEqual("hello world")
@@ -80,6 +82,7 @@ RUN --mount=type=secret,id=testsecret,target=/root/secret [ "$(cat /root/secret)
 	// test secret from file
 	sh := testutil.NewDebugShell(t, tmpCtx, testutil.WithOptions("--secret=id=testsecret,src="+tmpSec.Name()))
 	defer sh.Close()
+	sh.Do("next")
 	sh.Do(execNoTTY("cat /root/secret")).OutEqual("test-secret")
 	sh.Do("c")
 	if err := sh.Wait(); err != nil {
@@ -92,6 +95,7 @@ RUN --mount=type=secret,id=testsecret,target=/root/secret [ "$(cat /root/secret)
 		testutil.WithEnv("TEST_SECRET=test-secret"),
 	)
 	defer sh2.Close()
+	sh2.Do("next")
 	sh2.Do(execNoTTY("cat /root/secret")).OutEqual("test-secret")
 	sh2.Do("c")
 	if err := sh2.Wait(); err != nil {
@@ -155,6 +159,7 @@ func TestExecSSH(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -176,11 +181,14 @@ func TestExecSSH(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			defer l.Close()
 			go func() {
 				for {
-					if c, err := l.Accept(); err == nil {
-						go agent.ServeAgent(a, c)
+					c, err := l.Accept()
+					if err != nil {
+						return
 					}
+					go agent.ServeAgent(a, c)
 				}
 			}()
 			tmpCtx, doneTmpCtx := testutil.NewTempContext(t, fmt.Sprintf(`FROM %s
@@ -191,7 +199,7 @@ RUN --mount=%s ssh-add -l | grep 2048 | grep RSA`,
 			sh := testutil.NewDebugShell(t, tmpCtx, tt.buildgOptions(sockPath)...)
 			defer sh.Close()
 			sh.Do("b 3")
-			sh.Do("c")
+			sh.Do("c").OutContains("reached line: Dockerfile:3")
 			sh.Do(execNoTTY(`ssh-add -l | grep 2048 | grep RSA`)).OutContains("2048").OutContains("(RSA)")
 			sh.Do(execNoTTY(`/bin/sh -c "ssh-keygen -f /tmp/key -N '' && ssh-add -k /tmp/key 2>&1"`)).OutContains("agent refused operation")
 			sh.Do("c")

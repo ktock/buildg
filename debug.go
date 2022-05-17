@@ -202,13 +202,7 @@ func (d *debugWorkerWrapper) ResolveOp(v solver.Vertex, s frontend.FrontendLLBBr
 			return op, err
 		}
 	}
-	if baseOp, ok := v.Sys().(*pb.Op); ok {
-		switch baseOp.Op.(type) {
-		case *pb.Op_Exec:
-			op = &debugOpWrapper{op, v, d}
-		}
-	}
-	return op, err
+	return &debugOpWrapper{op, v, d}, nil
 }
 
 func (d *debugWorkerWrapper) WorkerRefByID(id string) (*worker.WorkerRef, bool) {
@@ -297,12 +291,10 @@ func (o *debugOpWrapper) Exec(ctx context.Context, g session.Group, inputs []sol
 	outputs, err := o.Op.Exec(ctx, g, inputs)
 	if err != nil {
 		var ee *llberrdefs.ExecError
-		if !errors.As(err, &ee) {
-			return outputs, err
+		if errors.As(err, &ee) {
+			execInputs, execMounts = ee.Inputs, ee.Mounts
 		}
-		execInputs, execMounts = ee.Inputs, ee.Mounts
-	} else {
-		execOp := o.vertex.Sys().(*pb.Op).Op.(*pb.Op_Exec)
+	} else if execOp, ok := o.vertex.Sys().(*pb.Op).Op.(*pb.Op_Exec); ok {
 		execInputs = make([]solver.Result, len(execOp.Exec.Mounts))
 		for i, m := range execOp.Exec.Mounts {
 			if m.Input < 0 {
