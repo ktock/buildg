@@ -51,7 +51,6 @@ require (
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/golang-lru v0.5.3 // indirect
-	github.com/ishidawataru/sctp v0.0.0-20210226210310-f2269e66cdee // indirect
 	github.com/klauspost/compress v1.15.1 // indirect
 	github.com/mitchellh/hashstructure/v2 v2.0.2 // indirect
 	github.com/moby/locker v1.0.1 // indirect
@@ -66,7 +65,7 @@ require (
 	github.com/pelletier/go-toml v1.9.4 // indirect
 	github.com/russross/blackfriday/v2 v2.0.1 // indirect
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
-	github.com/tonistiigi/fsutil v0.0.0-20220413024721-3c5c7e848994 // indirect
+	github.com/tonistiigi/fsutil v0.0.0-20220510150904-0dbf3a8a7d58 // indirect
 	github.com/tonistiigi/go-archvariant v1.0.0 // indirect
 	github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea // indirect
 	github.com/tonistiigi/vt100 v0.0.0-20210615222946-8066bb97264f // indirect
@@ -93,5 +92,5 @@ require (
 
 replace (
 	github.com/docker/docker => github.com/docker/docker v20.10.3-0.20220414164044-61404de7df1a+incompatible
-	github.com/moby/buildkit => github.com/ktock/buildkit v0.6.2-0.20220509015230-cc4288858c10
+	github.com/moby/buildkit => github.com/ktock/buildkit v0.6.2-0.20220517004505-b966e794ad1a
 )
