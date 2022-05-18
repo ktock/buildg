@@ -10,6 +10,8 @@ import (
 	"github.com/urfave/cli"
 )
 
+const defaultListRange = 3
+
 func listCommand(ctx context.Context, hCtx *handlerContext) cli.Command {
 	return cli.Command{
 		Name:      "list",
@@ -21,15 +23,38 @@ func listCommand(ctx context.Context, hCtx *handlerContext) cli.Command {
 				Name:  "all",
 				Usage: "show all lines",
 			},
+			cli.IntFlag{
+				Name:  "A",
+				Usage: "Print the specified number of lines after the current line",
+				Value: defaultListRange,
+			},
+			cli.IntFlag{
+				Name:  "B",
+				Usage: "Print the specified number of lines before the current line",
+				Value: defaultListRange,
+			},
+			cli.IntFlag{
+				Name:  "range",
+				Usage: "Print the specified number of lines before and after the current line",
+				Value: defaultListRange,
+			},
 		},
 		Action: func(clicontext *cli.Context) error {
-			printLines(hCtx.handler, hCtx.locs, 3, clicontext.Bool("all"))
+			lineRange := clicontext.Int("range")
+			before, after := lineRange, lineRange
+			if b := clicontext.Int("B"); b != defaultListRange {
+				before = b
+			}
+			if a := clicontext.Int("A"); a != defaultListRange {
+				after = a
+			}
+			printLines(hCtx.handler, hCtx.locs, before, after, clicontext.Bool("all"))
 			return nil
 		},
 	}
 }
 
-func printLines(h *handler, locs []*location, margin int, all bool) {
+func printLines(h *handler, locs []*location, before, after int, all bool) {
 	sources := make(map[*pb.SourceInfo][]*pb.Range)
 	for _, l := range locs {
 		sources[l.source] = append(sources[l.source], l.ranges...)
@@ -47,7 +72,7 @@ func printLines(h *handler, locs []*location, margin int, all bool) {
 			print := false
 			target := false
 			for _, r := range ranges {
-				if all || int(r.Start.Line)-margin <= i && i <= int(r.End.Line)+margin {
+				if all || int(r.Start.Line)-before <= i && i <= int(r.End.Line)+after {
 					print = true
 					if int(r.Start.Line) <= i && i <= int(r.End.Line) {
 						target = true
