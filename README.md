@@ -174,6 +174,7 @@ Leveraging the generic features added through the work, this project implements 
   - [list](#list)
   - [exit](#exit)
   - [help](#help)
+- [Global flags](#global-flags)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -192,6 +193,7 @@ Flags:
 - `--image value`: Image to use for debugging stage. Specify `--image` flag for [`exec`](#exec) command in debug shell when use this image.
 - `--secret value` : Secret value exposed to the build. Format: `id=secretname,src=filepath`
 - `--ssh value` : Allow forwarding SSH agent to the build. Format: `default|<id>[=<socket>|<key>[,<key>]]`
+- `--cache-reuse` : Reuse previously cached results. Useful for quickly debugging errored step. But breakpoints on cached steps are ignored (FIXME).
 - `--oci-cni-config-path value`: Path to CNI config file (default: "/etc/buildkit/cni.json")
 - `--oci-cni-binary-path value`: Path to CNI plugin binary dir (default: "/opt/cni/bin")
 - `--rootless`: Enable rootless configuration
@@ -295,3 +297,7 @@ Shows a list of commands or help for one command
 Alias: `h`
 
 Usage: `help [COMMAND]`
+
+## Global flags
+
+- `--root` : Path to the root directory for storing data (e.g. "/var/lib/buildg").

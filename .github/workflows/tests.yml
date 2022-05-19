@@ -44,7 +44,8 @@ jobs:
         if [ "${{ matrix.mode }}" == "root" ] ; then
           sudo go test -v ./...
         elif [ "${{ matrix.mode }}" == "rootless" ] ; then
-          TEST_BUILDG_PATH=buildg.sh go test -v ./...
+          mkdir -p ${GITHUB_WORKSPACE}/tmp
+          TEST_BUILDG_PATH=buildg.sh TEST_BUILDG_TMP_DIR=${GITHUB_WORKSPACE}/tmp go test -v ./...
         else
           echo "unknown mode ${{ matrix.mode }}"
           exit 1

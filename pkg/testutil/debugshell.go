@@ -79,11 +79,18 @@ func (o *Output) OutNotContains(s string) *Output {
 }
 
 type options struct {
-	opts []string
-	env  []string
+	opts       []string
+	env        []string
+	globalOpts []string
 }
 
 type DebugShellOption func(*options)
+
+func WithGlobalOptions(globalOpts ...string) DebugShellOption {
+	return func(o *options) {
+		o.globalOpts = append(o.globalOpts, globalOpts...)
+	}
+}
 
 func WithOptions(opts ...string) DebugShellOption {
 	return func(o *options) {
@@ -105,7 +112,7 @@ func NewDebugShell(t *testing.T, buildCtx string, opts ...DebugShellOption) *Deb
 
 	buildgCmd := getBuildgBinary(t)
 	prompt := identity.NewID()
-	args := append(append([]string{"debug"}, gotOpts.opts...), buildCtx)
+	args := append(gotOpts.globalOpts, append(append([]string{"--debug", "debug"}, gotOpts.opts...), buildCtx)...)
 	t.Logf("executing %q with args %+v", buildgCmd, args)
 	cmd := exec.Command(buildgCmd, args...)
 	cmd.Env = append(append(os.Environ(), "BUILDG_PS1"+"="+prompt), gotOpts.env...)

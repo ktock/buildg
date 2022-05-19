@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/containerd/console"
 	"github.com/containerd/containerd/pkg/userns"
@@ -49,6 +50,10 @@ func main() {
 		cli.BoolFlag{
 			Name:  "debug",
 			Usage: "enable debug logs",
+		},
+		cli.StringSliceFlag{
+			Name:  "root",
+			Usage: "Path to the root directory for storing data (e.g. \"/var/lib/buildg\")",
 		},
 	}
 	app.Commands = []cli.Command{
@@ -125,6 +130,10 @@ func newDebugCommand() cli.Command {
 			cli.StringSliceFlag{
 				Name:  "ssh",
 				Usage: "Allow forwarding SSH agent to the build. Format: default|<id>[=<socket>|<key>[,<key>]]",
+			},
+			cli.BoolFlag{
+				Name:  "cache-reuse",
+				Usage: "Reuse previously cached results. Useful for debugging errored step but breakpoints on cached steps are ignored.",
 			},
 			cli.StringFlag{
 				Name:  "oci-cni-config-path",
@@ -233,38 +242,40 @@ func debugAction(clicontext *cli.Context) error {
 		return err
 	}
 
+	// Parse config options
+	cfg, doneCfg, err := parseConfig(clicontext)
+	if err != nil {
+		return err
+	}
+	defer doneCfg()
+	logrus.Debugf("root dir: %q", cfg.Root)
+
 	// Prepare controller
 	debugController := newDebugController()
-	cfg := &config.Config{}
-	cfg.Workers.OCI.Rootless = clicontext.Bool("rootless")
-	cfg.Workers.OCI.NetworkConfig = config.NetworkConfig{
-		Mode:          clicontext.String("oci-worker-net"),
-		CNIConfigPath: clicontext.String("oci-cni-config-path"),
-		CNIBinaryPath: clicontext.String("oci-cni-binary-path"),
-	}
-	rootDir, err := rootDataDir(cfg.Workers.OCI.Rootless)
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(rootDir, 0700); err != nil {
-		return err
-	}
-	serveRoot, err := os.MkdirTemp(rootDir, "buildg")
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err := os.RemoveAll(serveRoot); err != nil {
-			logrus.WithError(err).Warnf("failed to cleanup %q", serveRoot)
+	var c *client.Client
+	var doneController func()
+	createdCh := make(chan error)
+	errCh := make(chan error)
+	go func() {
+		var err error
+		c, doneController, err = newController(ctx, cfg, debugController)
+		if err != nil {
+			errCh <- err
+			return
 		}
+		close(createdCh)
 	}()
-	cfg.Root = serveRoot
-	logrus.Debugf("root dir: %q", serveRoot)
-	c, done, err := newController(ctx, cfg, debugController)
-	if err != nil {
+	select {
+	case <-ctx.Done():
+		err := ctx.Err()
 		return err
+	case <-time.After(3 * time.Second):
+		return fmt.Errorf("timed out to access cache storage. other debug session is running?")
+	case err := <-errCh:
+		return err
+	case <-createdCh:
 	}
-	defer done()
+	defer doneController()
 
 	// Prepare progress writer
 	progressCtx := context.TODO()
@@ -325,6 +336,51 @@ func debugAction(clicontext *cli.Context) error {
 	}
 
 	return nil
+}
+
+func parseConfig(clicontext *cli.Context) (*config.Config, func(), error) {
+	cfg := &config.Config{}
+	cfg.Workers.OCI.Rootless = clicontext.Bool("rootless")
+	cfg.Workers.OCI.NetworkConfig = config.NetworkConfig{
+		Mode:          clicontext.String("oci-worker-net"),
+		CNIConfigPath: clicontext.String("oci-cni-config-path"),
+		CNIBinaryPath: clicontext.String("oci-cni-binary-path"),
+	}
+	rootDir := clicontext.GlobalString("root")
+	if rootDir == "" {
+		var err error
+		rootDir, err = rootDataDir(cfg.Workers.OCI.Rootless)
+		if err != nil {
+			return nil, nil, err
+		}
+		if err := os.MkdirAll(rootDir, 0700); err != nil {
+			return nil, nil, err
+		}
+	}
+	var serveRoot string
+	if clicontext.Bool("cache-reuse") {
+		// common location for storing caches for reuse.
+		// FIXME: all breakpoints on cached steps are ignored as of now.
+		// TODO: make this option true by defaut once we support breakpoints on cached steps.
+		serveRoot = filepath.Join(rootDir, "data")
+		// TODO: add "buildg prune" command for automatically doing this.
+		logrus.Infof("storing the build data to %q. to prune the data, remove that directory manually.", serveRoot)
+	}
+	done := func() {}
+	if serveRoot == "" {
+		tmpServeRoot, err := os.MkdirTemp(rootDir, "buildg")
+		if err != nil {
+			return nil, nil, err
+		}
+		done = func() {
+			if err := os.RemoveAll(tmpServeRoot); err != nil {
+				logrus.WithError(err).Warnf("failed to cleanup %q", serveRoot)
+			}
+		}
+		serveRoot = tmpServeRoot
+	}
+	cfg.Root = serveRoot
+	return cfg, done, nil
 }
 
 // TODO:
