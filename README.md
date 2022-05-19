@@ -119,7 +119,18 @@ hi
 
 Available from https://github.com/ktock/buildg/releases
 
-### Building using make
+### Rootless mode
+
+Install and use [`buildg.sh`](./extras/buildg.sh).
+[RootlessKit](https://github.com/rootless-containers/rootlesskit) and [slirp4netns](https://github.com/rootless-containers/slirp4netns) are needed.
+
+```
+$ buildg.sh debug /path/to/context
+```
+
+The doc in BuildKit project for troubleshooting: https://github.com/moby/buildkit/blob/master/docs/rootless.md#troubleshooting
+
+### Building binary using make
 
 Go 1.18+ is needed.
 
@@ -130,16 +141,13 @@ $ make
 $ sudo make install
 ```
 
-### Rootless mode
+### nerdctl
 
-Install and use [`buildg.sh`](./extras/buildg.sh).
-[RootlessKit](https://github.com/rootless-containers/rootlesskit) and [slirp4netns](https://github.com/rootless-containers/slirp4netns) are needed.
+[nerdctl](https://github.com/containerd/nerdctl) project provides buildg as a subcommand since v0.20.0: https://github.com/containerd/nerdctl/blob/v0.20.0/docs/builder-debug.md
 
 ```
-$ buildg.sh debug /tmp/mybuild
+$ nerdctl builder debug /path/to/build/context
 ```
-
-The doc in BuildKit project for troubleshooting: https://github.com/moby/buildkit/blob/master/docs/rootless.md#troubleshooting
 
 ## Motivation
 
