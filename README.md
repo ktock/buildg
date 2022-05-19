@@ -281,6 +281,9 @@ Usage: `list [OPTIONS]`
 Flags:
 
 - `--all`: show all lines
+- `-A value`: Print the specified number of lines after the current line (default: 3)
+- `-B value`: Print the specified number of lines before the current line (default: 3)
+- `--range value`: Print the specified number of lines before and after the current line (default: 3)
 
 ### exit
 

@@ -160,7 +160,7 @@ func (h *handler) handle(ctx context.Context, info *registeredStatus, locs []*lo
 		logrus.Infof("debug session started. type \"help\" for command reference.")
 		h.initialized = true
 	}
-	printLines(h, locs, 3, false)
+	printLines(h, locs, defaultListRange, defaultListRange, false)
 	for {
 		ln, err := h.readLine(ctx)
 		if err != nil {
