@@ -391,7 +391,7 @@ func parseConfig(clicontext *cli.Context) (*config.Config, func(), error) {
 func parseSolveOpt(clicontext *cli.Context) (*client.SolveOpt, error) {
 	buildContext := clicontext.Args().First()
 	if buildContext == "" {
-		return nil, errors.New("context needs to be specified")
+		return nil, fmt.Errorf("context needs to be specified")
 	} else if buildContext == "-" || strings.Contains(buildContext, "://") {
 		return nil, fmt.Errorf("unsupported build context: %q", buildContext)
 	}
