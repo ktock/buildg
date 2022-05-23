@@ -286,6 +286,18 @@ type debugOpWrapper struct {
 	worker *debugWorkerWrapper
 }
 
+func (o *debugOpWrapper) LoadCacheHook(ctx context.Context, inputs []solver.Result, outputs []solver.Result) {
+	logrus.Infof("CACHED %v", o.vertex.Name())
+	if err := o.worker.notifyAndWait(ctx, status{
+		inputs: inputs,
+		mounts: outputs,
+		vertex: o.vertex.Digest(),
+		op:     o.vertex.Sys().(*pb.Op),
+	}); err != nil {
+		logrus.WithError(err).Debugf("failed to notify cache event")
+	}
+}
+
 func (o *debugOpWrapper) Exec(ctx context.Context, g session.Group, inputs []solver.Result) (results []solver.Result, err error) {
 	var execInputs, execMounts []solver.Result
 

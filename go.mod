@@ -92,5 +92,5 @@ require (
 
 replace (
 	github.com/docker/docker => github.com/docker/docker v20.10.3-0.20220414164044-61404de7df1a+incompatible
-	github.com/moby/buildkit => github.com/ktock/buildkit v0.6.2-0.20220517004505-b966e794ad1a
+	github.com/moby/buildkit => github.com/ktock/buildkit v0.6.2-0.20220531103925-3307632f8678
 )
