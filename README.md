@@ -152,7 +152,7 @@ $ nerdctl builder debug /path/to/build/context
 ## Motivation
 
 Debugging a large and complex Dockerfile isn't easy and can take a long time.
-The goal of buildg is to solve it by providing a way to insepct the detailed execution state of a Dockerfile in an interactive and easy-to-use UI/UX.
+The goal of buildg is to solve it by providing a way to inspect the detailed execution state of a Dockerfile in an interactive and easy-to-use UI/UX.
 
 BuildKit project has been working on better debugging support (e.g. https://github.com/moby/buildkit/pull/2813, https://github.com/moby/buildkit/issues/1472, https://github.com/moby/buildkit/issues/749).
 Leveraging the generic features added through the work, this project implements a PoC for providing easy UI/UX to debug Dockerfile.
