@@ -384,8 +384,6 @@ func parseConfig(clicontext *cli.Context) (*config.Config, func(), error) {
 }
 
 // TODO:
-// - ssh session
-// - secret session
 // - cache importer/exporter
 // - multi-platform
 func parseSolveOpt(clicontext *cli.Context) (*client.SolveOpt, error) {
