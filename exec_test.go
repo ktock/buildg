@@ -31,6 +31,8 @@ RUN echo -n a > /a`, testutil.Mirror("busybox:1.32.0"))
 	sh.Do(execNoTTY("--image cat /debugroot/a")).OutEqual("a")
 	sh.Do(execNoTTY("--image --mountroot=/testdebugroot/rootdir/ cat /testdebugroot/rootdir/a")).OutEqual("a")
 	sh.Do(execNoTTY("--init-state cat /a")).OutContains("process execution failed")
+	sh.Do(execNoTTY("-e MSG=hello -e MSG2=world /bin/sh -c \"echo -n $MSG $MSG2\"")).OutEqual("hello world")
+	sh.Do(execNoTTY("--workdir /tmp /bin/sh -c \"echo -n $(pwd)\"")).OutEqual("/tmp")
 	sh.Do("c")
 
 	if err := sh.Wait(); err != nil {

@@ -277,6 +277,8 @@ Flags:
 - `--init-state`: Execute commands in an initial state of that step (experimental)
 - `--tty`, `-t`: Allocate tty (enabled by default)
 - `-i`: Enable stdin. (FIXME: must be set with tty) (enabled by default)
+- `--env value`, `-e value`: Set environment variables
+- `--workdir value`, `-w value`: Working directory inside the container
 
 ### list
 
