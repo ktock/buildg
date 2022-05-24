@@ -47,6 +47,14 @@ Only supported on RUN instructions as of now.
 				Name:  "i",
 				Usage: "Enable stdin (FIXME: must be set with tty) (enabled by default)",
 			},
+			cli.StringSliceFlag{
+				Name:  "env,e",
+				Usage: "Set environment variables",
+			},
+			cli.StringFlag{
+				Name:  "workdir,w",
+				Usage: "Working directory inside the container",
+			},
 		},
 		Action: func(clicontext *cli.Context) error {
 			args := clicontext.Args()
@@ -69,6 +77,8 @@ Only supported on RUN instructions as of now.
 				tty:        flagT,
 				mountroot:  clicontext.String("mountroot"),
 				inputMount: clicontext.Bool("init-state"),
+				env:        clicontext.StringSlice("env"),
+				cwd:        clicontext.String("workdir"),
 			}
 			if clicontext.Bool("image") {
 				h.imageMu.Lock()
@@ -95,6 +105,8 @@ type containerConfig struct {
 	image          gwclient.Reference
 	mountroot      string
 	inputMount     bool
+	env            []string
+	cwd            string
 }
 
 func (h *handler) execContainer(ctx context.Context, cfg containerConfig) error {
@@ -148,11 +160,15 @@ func (h *handler) execContainer(ctx context.Context, cfg containerConfig) error 
 	defer ctr.Release(ctx)
 
 	meta := exec.Meta
+	cwd := meta.Cwd
+	if cfg.cwd != "" {
+		cwd = cfg.cwd
+	}
 	proc, err := ctr.Start(ctx, gwclient.StartRequest{
 		Args:         cfg.args,
-		Env:          meta.Env,
+		Env:          append(meta.Env, cfg.env...),
 		User:         meta.User,
-		Cwd:          meta.Cwd,
+		Cwd:          cwd,
 		Tty:          cfg.tty,
 		Stdin:        cfg.stdin,
 		Stdout:       cfg.stdout,
