@@ -14,7 +14,7 @@ RUN echo -n a > /a
 RUN echo -n b > /b
 RUN echo -n c > /c
 RUN echo -n d > /d`, testutil.Mirror("busybox:1.32.0"))
-	fmt.Printf(dt)
+	fmt.Println(dt)
 	tmpCtx, doneTmpCtx := testutil.NewTempContext(t, dt)
 	defer doneTmpCtx()
 
@@ -53,7 +53,7 @@ FROM %s
 RUN echo -n b > /b
 COPY --from=base /a /
 RUN echo -n c > /c`, testutil.Mirror("busybox:1.32.0"), testutil.Mirror("alpine:3.15.3"))
-	fmt.Printf(dt)
+	fmt.Println(dt)
 	tmpCtx, doneTmpCtx := testutil.NewTempContext(t, dt)
 	defer doneTmpCtx()
 
@@ -80,7 +80,7 @@ func TestNext(t *testing.T) {
 	dt := fmt.Sprintf(`FROM %s
 RUN echo -n a > /a
 RUN echo -n b > /b`, testutil.Mirror("busybox:1.32.0"))
-	fmt.Printf(dt)
+	fmt.Println(dt)
 	tmpCtx, doneTmpCtx := testutil.NewTempContext(t, dt)
 	defer doneTmpCtx()
 
@@ -106,7 +106,7 @@ func TestOnFail(t *testing.T) {
 	dt := fmt.Sprintf(`FROM %s
 RUN echo -n a > /a
 RUN cat /dummy`, testutil.Mirror("busybox:1.32.0"))
-	fmt.Printf(dt)
+	fmt.Println(dt)
 	tmpCtx, doneTmpCtx := testutil.NewTempContext(t, dt)
 	defer doneTmpCtx()
 
@@ -132,7 +132,7 @@ func TestExit(t *testing.T) {
 	dt := fmt.Sprintf(`FROM %s
 RUN echo -n a > /a
 RUN echo -n b > /b`, testutil.Mirror("busybox:1.32.0"))
-	fmt.Printf(dt)
+	fmt.Println(dt)
 	tmpCtx, doneTmpCtx := testutil.NewTempContext(t, dt)
 	defer doneTmpCtx()
 

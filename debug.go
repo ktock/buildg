@@ -79,7 +79,8 @@ func (d *debugController) addLocation(source *pb.Source) {
 	if d.sources == nil {
 		d.sources = make(map[*pb.Source]int)
 	}
-	if _, ok := d.sources[source]; ok {
+	_, ok := d.sources[source]
+	if ok {
 		d.sources[source]++
 	} else {
 		d.sources[source] = 1
