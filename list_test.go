@@ -13,7 +13,7 @@ func TestList(t *testing.T) {
 RUN echo a > /a
 RUN echo b > /b
 RUN echo c > /c`, testutil.Mirror("busybox:1.32.0"))
-	fmt.Printf(dt)
+	fmt.Println(dt)
 	tmpCtx, doneTmpCtx := testutil.NewTempContext(t, dt)
 	defer doneTmpCtx()
 
@@ -71,7 +71,7 @@ RUN echo j
 RUN echo k
 RUN echo l
 `, testutil.Mirror("busybox:1.32.0"))
-	fmt.Printf(dt)
+	fmt.Println(dt)
 	tmpCtx, doneTmpCtx := testutil.NewTempContext(t, dt)
 	defer doneTmpCtx()
 

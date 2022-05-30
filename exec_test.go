@@ -19,7 +19,7 @@ func TestExec(t *testing.T) {
 	t.Parallel()
 	dt := fmt.Sprintf(`FROM %s
 RUN echo -n a > /a`, testutil.Mirror("busybox:1.32.0"))
-	fmt.Printf(dt)
+	fmt.Println(dt)
 	tmpCtx, doneTmpCtx := testutil.NewTempContext(t, dt)
 	defer doneTmpCtx()
 
@@ -44,7 +44,7 @@ func TestExecQuotes(t *testing.T) {
 	t.Parallel()
 	dt := fmt.Sprintf(`FROM %s
 RUN echo foo`, testutil.Mirror("busybox:1.32.0"))
-	fmt.Printf(dt)
+	fmt.Println(dt)
 	tmpCtx, doneTmpCtx := testutil.NewTempContext(t, dt)
 	defer doneTmpCtx()
 

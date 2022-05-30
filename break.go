@@ -163,7 +163,7 @@ func (b *onFailBreakpoint) isTarget(ctx context.Context, info breakpointContext)
 }
 
 func (b *onFailBreakpoint) String() string {
-	return fmt.Sprintf("breaks on fail")
+	return "breaks on fail"
 }
 
 func (b *onFailBreakpoint) addMark(source *pb.SourceInfo, line int64) bool {

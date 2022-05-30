@@ -106,5 +106,4 @@ func printLines(h *handler, locs []*location, before, after int, all bool) {
 			firstPrint = false
 		}
 	}
-	return
 }
