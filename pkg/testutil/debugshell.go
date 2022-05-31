@@ -54,6 +54,11 @@ type Output struct {
 	stdout []byte
 }
 
+func (o *Output) Out() string {
+	o.sh.t.Log("stdout:\n" + string(o.stdout))
+	return string(o.stdout)
+}
+
 func (o *Output) OutEqual(s string) *Output {
 	o.sh.t.Log("stdout:\n" + string(o.stdout))
 	if s != string(o.stdout) {

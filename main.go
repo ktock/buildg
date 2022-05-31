@@ -133,7 +133,7 @@ func newDebugCommand() cli.Command {
 			},
 			cli.BoolFlag{
 				Name:  "cache-reuse",
-				Usage: "Reuse previously cached results. Useful for debugging errored step but breakpoints on cached steps are ignored.",
+				Usage: "Reuse previously cached results (experimental).",
 			},
 			cli.StringFlag{
 				Name:  "oci-cni-config-path",
@@ -360,8 +360,8 @@ func parseConfig(clicontext *cli.Context) (*config.Config, func(), error) {
 	var serveRoot string
 	if clicontext.Bool("cache-reuse") {
 		// common location for storing caches for reuse.
-		// FIXME: all breakpoints on cached steps are ignored as of now.
-		// TODO: make this option true by defaut once we support breakpoints on cached steps.
+		// TODO: multiple concurrent build isn't supported as of now
+		// TODO: make this option true by defaut once we support multiple concurrent build
 		serveRoot = filepath.Join(rootDir, "data")
 		// TODO: add "buildg prune" command for automatically doing this.
 		logrus.Infof("storing the build data to %q. to prune the data, remove that directory manually.", serveRoot)
