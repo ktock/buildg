@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/ktock/buildg/pkg/testutil"
@@ -75,9 +76,37 @@ RUN date > /ok
 	shOK.Do("next")
 	shOK.Do(execNoTTY("cat /a")).OutEqual(a2)
 	shOK.Do(execNoTTY("cat /b")).OutEqual(b2)
-	nonEmpty(t, shOK.Do(execNoTTY("cat /ok")).Out())
+	okOut := nonEmpty(t, shOK.Do(execNoTTY("cat /ok")).Out())
 	shOK.Do("next")
 	if err := shOK.Wait(); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := testutil.BuildgCmd(t, []string{"prune"}, testutil.WithGlobalOptions("--root="+tmpRoot)).Output(); err != nil {
+		t.Fatal(err)
+	}
+	duOut, err := testutil.BuildgCmd(t, []string{"du"}, testutil.WithGlobalOptions("--root="+tmpRoot)).Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	zeroOut := "Total:\t0 B"
+	if !strings.Contains(string(duOut), zeroOut) {
+		t.Fatalf("du must contain %q; got %q", zeroOut, string(duOut))
+	}
+	shPrune := testutil.NewDebugShell(t, tmpOKCtx,
+		testutil.WithGlobalOptions("--root="+tmpRoot),
+		testutil.WithOptions("--cache-reuse"))
+	defer shPrune.Close()
+	shPrune.Do("next")
+	shPrune.Do(execNoTTY("cat /a")).OutNotEqual(a)
+	shPrune.Do("next")
+	shPrune.Do(execNoTTY("cat /b")).OutNotEqual(b)
+	shPrune.Do("next")
+	shPrune.Do(execNoTTY("cat /a")).OutNotEqual(a2)
+	shPrune.Do(execNoTTY("cat /b")).OutNotEqual(b2)
+	shPrune.Do(execNoTTY("cat /ok")).OutNotEqual(okOut)
+	shPrune.Do("next")
+	if err := shPrune.Wait(); err != nil {
 		t.Fatal(err)
 	}
 }

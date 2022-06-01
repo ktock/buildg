@@ -171,6 +171,8 @@ Leveraging the generic features added through the work, this project implements 
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [buildg debug](#buildg-debug)
+- [buildg prune](#buildg-prune)
+- [buildg du](#buildg-du)
 - [Debug shell commands](#debug-shell-commands)
   - [break](#break)
   - [breakpoints](#breakpoints)
@@ -201,6 +203,22 @@ Flags:
 - `--secret value` : Secret value exposed to the build. Format: `id=secretname,src=filepath`
 - `--ssh value` : Allow forwarding SSH agent to the build. Format: `default|<id>[=<socket>|<key>[,<key>]]`
 - `--cache-reuse` : Reuse previously cached results (experimental).
+
+## buildg prune
+
+Prune cache
+
+Usage: `buildg prune [command options]`
+
+Flags:
+
+- `--all`: Prune including internal/frontend references
+
+## buildg du
+
+Show disk usage information
+
+Usage: `buildg du`
 
 ## Debug shell commands
 

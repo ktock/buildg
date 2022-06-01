@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"text/tabwriter"
 	"time"
 
 	"github.com/containerd/console"
@@ -85,6 +86,8 @@ func main() {
 	}, flags...)
 	app.Commands = []cli.Command{
 		newDebugCommand(),
+		newDuCommand(),
+		newPruneCommand(),
 		newVersionCommand(),
 	}
 	app.Before = func(context *cli.Context) error {
@@ -147,6 +150,28 @@ func newDebugCommand() cli.Command {
 			},
 			// TODO: no-cache, output, tag, ssh, secret, quiet, cache-from, cache-to, rm
 		},
+	}
+}
+
+func newPruneCommand() cli.Command {
+	return cli.Command{
+		Name:   "prune",
+		Usage:  "Prune cache",
+		Action: pruneAction,
+		Flags: []cli.Flag{
+			cli.BoolFlag{
+				Name:  "all",
+				Usage: "Prune including internal/frontend references",
+			},
+		},
+	}
+}
+
+func newDuCommand() cli.Command {
+	return cli.Command{
+		Name:   "du",
+		Usage:  "Show disk usage",
+		Action: duAction,
 	}
 }
 
@@ -338,6 +363,102 @@ func debugAction(clicontext *cli.Context) error {
 	return nil
 }
 
+func pruneAction(clicontext *cli.Context) error {
+	ctx, ctxCancel := context.WithCancel(context.Background())
+	globalSignalHandler = &signalHandler{
+		handler: func(sig os.Signal) error {
+			ctxCancel()
+			return nil
+		},
+	}
+	globalSignalHandler.start()
+
+	// Parse config options
+	cfg, rootDir, err := parseGlobalWorkerConfig(clicontext)
+	if err != nil {
+		return err
+	}
+	cfg.Root = defaultServeRootDir(rootDir)
+	c, done, err := newController(ctx, cfg, nil)
+	if err != nil {
+		return err
+	}
+	defer done()
+
+	ch := make(chan client.UsageInfo)
+	donePrint := make(chan struct{})
+	tw := tabwriter.NewWriter(os.Stdout, 1, 8, 1, '\t', 0)
+	first := true
+	total := int64(0)
+	go func() {
+		defer close(donePrint)
+		for du := range ch {
+			total += du.Size
+			if first {
+				fmt.Fprintln(tw, "ID\tRECLAIMABLE\tSIZE")
+				first = false
+			}
+			fmt.Fprintf(tw, "%-71s\t%-11v\t%s\n", du.ID, !du.InUse, fmt.Sprintf("%d B", du.Size))
+			tw.Flush()
+		}
+	}()
+	var opts []client.PruneOption
+	if clicontext.Bool("all") {
+		opts = append(opts, client.PruneAll)
+	}
+
+	err = c.Prune(ctx, ch, opts...)
+	close(ch)
+	<-donePrint
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(tw, "Total:\t%d B\n", total)
+	tw.Flush()
+
+	return nil
+}
+
+func duAction(clicontext *cli.Context) error {
+	ctx, ctxCancel := context.WithCancel(context.Background())
+	globalSignalHandler = &signalHandler{
+		handler: func(sig os.Signal) error {
+			ctxCancel()
+			return nil
+		},
+	}
+	globalSignalHandler.start()
+
+	// Parse config options
+	cfg, rootDir, err := parseGlobalWorkerConfig(clicontext)
+	if err != nil {
+		return err
+	}
+	cfg.Root = defaultServeRootDir(rootDir)
+	c, done, err := newController(ctx, cfg, nil)
+	if err != nil {
+		return err
+	}
+	defer done()
+
+	tw := tabwriter.NewWriter(os.Stdout, 1, 8, 1, '\t', 0)
+	fmt.Fprintln(tw, "ID\tRECLAIMABLE\tSIZE")
+	dus, err := c.DiskUsage(ctx)
+	if err != nil {
+		return err
+	}
+	total := int64(0)
+	for _, du := range dus {
+		total += du.Size
+		fmt.Fprintf(tw, "%-71s\t%-11v\t%s\n", du.ID, !du.InUse, fmt.Sprintf("%d B", du.Size))
+		tw.Flush()
+	}
+	fmt.Fprintf(tw, "Total:\t%d B\n", total)
+	tw.Flush()
+
+	return nil
+}
+
 func parseGlobalWorkerConfig(clicontext *cli.Context) (cfg *config.Config, rootDir string, err error) {
 	cfg = &config.Config{}
 	cfg.Workers.OCI.Rootless = clicontext.GlobalBool("rootless")
@@ -369,9 +490,7 @@ func parseWorkerConfig(clicontext *cli.Context) (*config.Config, func(), error) 
 		// common location for storing caches for reuse.
 		// TODO: multiple concurrent build isn't supported as of now
 		// TODO: make this option true by defaut once we support multiple concurrent build
-		serveRoot = filepath.Join(rootDir, "data")
-		// TODO: add "buildg prune" command for automatically doing this.
-		logrus.Infof("storing the build data to %q. to prune the data, remove that directory manually.", serveRoot)
+		serveRoot = defaultServeRootDir(rootDir)
 	}
 	done := func() {}
 	if serveRoot == "" {
@@ -458,6 +577,8 @@ func parseSolveOpt(clicontext *cli.Context) (*client.SolveOpt, error) {
 	}, nil
 }
 
+// newController creates controller client based on the passed config.
+// optional debugController allows adding debugger support to the controller.
 func newController(ctx context.Context, cfg *config.Config, debugController *debugController) (_ *client.Client, _ func(), retErr error) {
 	if cfg.Root == "" {
 		return nil, nil, fmt.Errorf("root directory must be specified")
@@ -475,11 +596,13 @@ func newController(ctx context.Context, cfg *config.Config, debugController *deb
 	}()
 
 	// Initialize OCI worker with debugging support
-	baseW, err := newWorker(ctx, cfg)
+	w, err := newWorker(ctx, cfg)
 	if err != nil {
 		return nil, nil, err
 	}
-	w := debugController.debugWorker(baseW)
+	if debugController != nil {
+		w = debugController.debugWorker(w)
+	}
 	wc := &worker.Controller{}
 	if err := wc.Add(w); err != nil {
 		return nil, nil, err
@@ -494,8 +617,12 @@ func newController(ctx context.Context, cfg *config.Config, debugController *deb
 	if err != nil {
 		return nil, nil, err
 	}
+	gwfrontend := gateway.NewGatewayFrontend(wc)
+	if debugController != nil {
+		gwfrontend = debugController.frontendWithDebug(gwfrontend)
+	}
 	frontends := map[string]frontend.Frontend{}
-	frontends["gateway.v0"] = debugController.frontendWithDebug(gateway.NewGatewayFrontend(wc))
+	frontends["gateway.v0"] = gwfrontend
 	controller, err := control.NewController(control.Opt{
 		SessionManager:            sessionManager,
 		WorkerController:          wc,
@@ -547,6 +674,10 @@ func newWorker(ctx context.Context, cfg *config.Config) (worker.Worker, error) {
 	}
 	opt.RegistryHosts = resolver.NewRegistryConfig(cfg.Registries)
 	return base.NewWorker(ctx, opt)
+}
+
+func defaultServeRootDir(rootDir string) string {
+	return filepath.Join(rootDir, "data")
 }
 
 func rootDataDir(rootless bool) (string, error) {
