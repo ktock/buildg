@@ -197,14 +197,10 @@ Flags:
 - `--file value`, `-f value`: Name of the Dockerfile
 - `--target value`: Target build stage to build.
 - `--build-arg value`: Build-time variables
-- `--oci-worker-net value`: Worker network type: "auto", "cni", "host" (default: "auto")
 - `--image value`: Image to use for debugging stage. Specify `--image` flag for [`exec`](#exec) command in debug shell when use this image.
 - `--secret value` : Secret value exposed to the build. Format: `id=secretname,src=filepath`
 - `--ssh value` : Allow forwarding SSH agent to the build. Format: `default|<id>[=<socket>|<key>[,<key>]]`
 - `--cache-reuse` : Reuse previously cached results (experimental).
-- `--oci-cni-config-path value`: Path to CNI config file (default: "/etc/buildkit/cni.json")
-- `--oci-cni-binary-path value`: Path to CNI plugin binary dir (default: "/opt/cni/bin")
-- `--rootless`: Enable rootless configuration
 
 ## Debug shell commands
 
@@ -314,3 +310,7 @@ Usage: `help [COMMAND]`
 ## Global flags
 
 - `--root` : Path to the root directory for storing data (e.g. "/var/lib/buildg").
+- `--oci-worker-net value`: Worker network type: "auto", "cni", "host" (default: "auto")
+- `--oci-cni-config-path value`: Path to CNI config file (default: "/etc/buildkit/cni.json")
+- `--oci-cni-binary-path value`: Path to CNI plugin binary dir (default: "/opt/cni/bin")
+- `--rootless`: Enable rootless configuration

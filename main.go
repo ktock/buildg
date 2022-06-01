@@ -46,7 +46,19 @@ import (
 func main() {
 	app := cli.NewApp()
 	app.Usage = "Interactive debugger for Dockerfile"
-	app.Flags = []cli.Flag{
+	var flags []cli.Flag
+	if userns.RunningInUserNS() {
+		flags = append(flags, cli.BoolTFlag{
+			Name:  "rootless",
+			Usage: "Enable rootless configuration (default:true)",
+		})
+	} else {
+		flags = append(flags, cli.BoolFlag{
+			Name:  "rootless",
+			Usage: "Enable rootless configuration",
+		})
+	}
+	app.Flags = append([]cli.Flag{
 		cli.BoolFlag{
 			Name:  "debug",
 			Usage: "enable debug logs",
@@ -55,7 +67,22 @@ func main() {
 			Name:  "root",
 			Usage: "Path to the root directory for storing data (e.g. \"/var/lib/buildg\")",
 		},
-	}
+		cli.StringFlag{
+			Name:  "oci-worker-net",
+			Usage: "Worker network type: \"auto\", \"cni\", \"host\"",
+			Value: "auto",
+		},
+		cli.StringFlag{
+			Name:  "oci-cni-config-path",
+			Usage: "Path to CNI config file",
+			Value: "/etc/buildkit/cni.json",
+		},
+		cli.StringFlag{
+			Name:  "oci-cni-binary-path",
+			Usage: "Path to CNI plugin binary dir",
+			Value: "/opt/cni/bin",
+		},
+	}, flags...)
 	app.Commands = []cli.Command{
 		newDebugCommand(),
 		newVersionCommand(),
@@ -85,23 +112,11 @@ func newVersionCommand() cli.Command {
 }
 
 func newDebugCommand() cli.Command {
-	var flags []cli.Flag
-	if userns.RunningInUserNS() {
-		flags = append(flags, cli.BoolTFlag{
-			Name:  "rootless",
-			Usage: "Enable rootless configuration (default:true)",
-		})
-	} else {
-		flags = append(flags, cli.BoolFlag{
-			Name:  "rootless",
-			Usage: "Enable rootless configuration",
-		})
-	}
 	return cli.Command{
 		Name:   "debug",
 		Usage:  "Debug a build",
 		Action: debugAction,
-		Flags: append([]cli.Flag{
+		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  "file,f",
 				Usage: "Name of the Dockerfile",
@@ -113,11 +128,6 @@ func newDebugCommand() cli.Command {
 			cli.StringSliceFlag{
 				Name:  "build-arg",
 				Usage: "Build-time variables",
-			},
-			cli.StringFlag{
-				Name:  "oci-worker-net",
-				Usage: "Worker network type: \"auto\", \"cni\", \"host\"",
-				Value: "auto",
 			},
 			cli.StringFlag{
 				Name:  "image",
@@ -135,18 +145,8 @@ func newDebugCommand() cli.Command {
 				Name:  "cache-reuse",
 				Usage: "Reuse previously cached results (experimental).",
 			},
-			cli.StringFlag{
-				Name:  "oci-cni-config-path",
-				Usage: "Path to CNI config file",
-				Value: "/etc/buildkit/cni.json",
-			},
-			cli.StringFlag{
-				Name:  "oci-cni-binary-path",
-				Usage: "Path to CNI plugin binary dir",
-				Value: "/opt/cni/bin",
-			},
 			// TODO: no-cache, output, tag, ssh, secret, quiet, cache-from, cache-to, rm
-		}, flags...),
+		},
 	}
 }
 
@@ -243,7 +243,7 @@ func debugAction(clicontext *cli.Context) error {
 	}
 
 	// Parse config options
-	cfg, doneCfg, err := parseConfig(clicontext)
+	cfg, doneCfg, err := parseWorkerConfig(clicontext)
 	if err != nil {
 		return err
 	}
@@ -338,24 +338,31 @@ func debugAction(clicontext *cli.Context) error {
 	return nil
 }
 
-func parseConfig(clicontext *cli.Context) (*config.Config, func(), error) {
-	cfg := &config.Config{}
-	cfg.Workers.OCI.Rootless = clicontext.Bool("rootless")
+func parseGlobalWorkerConfig(clicontext *cli.Context) (cfg *config.Config, rootDir string, err error) {
+	cfg = &config.Config{}
+	cfg.Workers.OCI.Rootless = clicontext.GlobalBool("rootless")
 	cfg.Workers.OCI.NetworkConfig = config.NetworkConfig{
-		Mode:          clicontext.String("oci-worker-net"),
-		CNIConfigPath: clicontext.String("oci-cni-config-path"),
-		CNIBinaryPath: clicontext.String("oci-cni-binary-path"),
+		Mode:          clicontext.GlobalString("oci-worker-net"),
+		CNIConfigPath: clicontext.GlobalString("oci-cni-config-path"),
+		CNIBinaryPath: clicontext.GlobalString("oci-cni-binary-path"),
 	}
-	rootDir := clicontext.GlobalString("root")
+	rootDir = clicontext.GlobalString("root")
 	if rootDir == "" {
-		var err error
 		rootDir, err = rootDataDir(cfg.Workers.OCI.Rootless)
 		if err != nil {
-			return nil, nil, err
+			return nil, "", err
 		}
 		if err := os.MkdirAll(rootDir, 0700); err != nil {
-			return nil, nil, err
+			return nil, "", err
 		}
+	}
+	return cfg, rootDir, nil
+}
+
+func parseWorkerConfig(clicontext *cli.Context) (*config.Config, func(), error) {
+	cfg, rootDir, err := parseGlobalWorkerConfig(clicontext)
+	if err != nil {
+		return nil, nil, err
 	}
 	var serveRoot string
 	if clicontext.Bool("cache-reuse") {
@@ -451,12 +458,12 @@ func parseSolveOpt(clicontext *cli.Context) (*client.SolveOpt, error) {
 	}, nil
 }
 
-func newController(ctx context.Context, cfg *config.Config, debugController *debugController) (c *client.Client, done func(), retErr error) {
+func newController(ctx context.Context, cfg *config.Config, debugController *debugController) (_ *client.Client, _ func(), retErr error) {
 	if cfg.Root == "" {
 		return nil, nil, fmt.Errorf("root directory must be specified")
 	}
 	var closeFuncs []func()
-	done = func() {
+	done := func() {
 		for i := len(closeFuncs) - 1; i >= 0; i-- {
 			closeFuncs[i]()
 		}
@@ -508,7 +515,7 @@ func newController(ctx context.Context, cfg *config.Config, debugController *deb
 	lt := newPipeListener()
 	go controlServer.Serve(lt)
 	closeFuncs = append(closeFuncs, controlServer.GracefulStop)
-	c, err = client.New(ctx, "", client.WithContextDialer(lt.dial))
+	c, err := client.New(ctx, "", client.WithContextDialer(lt.dial))
 	if err != nil {
 		return nil, nil, err
 	}
