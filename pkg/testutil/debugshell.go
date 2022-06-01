@@ -59,6 +59,14 @@ func (o *Output) Out() string {
 	return string(o.stdout)
 }
 
+func (o *Output) OutNotEqual(s string) *Output {
+	o.sh.t.Log("stdout:\n" + string(o.stdout))
+	if s == string(o.stdout) {
+		o.sh.fatal(fmt.Sprintf("unexpected stdout\nmust not be:\n%s\ngot:\n%s", s, o.stdout))
+	}
+	return o
+}
+
 func (o *Output) OutEqual(s string) *Output {
 	o.sh.t.Log("stdout:\n" + string(o.stdout))
 	if s != string(o.stdout) {
@@ -109,18 +117,28 @@ func WithEnv(env ...string) DebugShellOption {
 	}
 }
 
-func NewDebugShell(t *testing.T, buildCtx string, opts ...DebugShellOption) *DebugShell {
+func BuildgCmd(t *testing.T, args []string, opts ...DebugShellOption) *exec.Cmd {
 	gotOpts := options{}
 	for _, o := range opts {
 		o(&gotOpts)
 	}
 
 	buildgCmd := getBuildgBinary(t)
+	cmd := exec.Command(buildgCmd, append(append(gotOpts.globalOpts, "--debug"), args...)...)
+	cmd.Env = append(os.Environ(), gotOpts.env...)
+	return cmd
+}
+
+func NewDebugShell(t *testing.T, buildCtx string, opts ...DebugShellOption) *DebugShell {
+	gotOpts := options{}
+	for _, o := range opts {
+		o(&gotOpts)
+	}
+
+	cmd := BuildgCmd(t, append(append([]string{"debug"}, gotOpts.opts...), buildCtx), opts...)
+	t.Logf("executing %q with args %+v", cmd.Path, cmd.Args)
 	prompt := identity.NewID()
-	args := append(gotOpts.globalOpts, append(append([]string{"--debug", "debug"}, gotOpts.opts...), buildCtx)...)
-	t.Logf("executing %q with args %+v", buildgCmd, args)
-	cmd := exec.Command(buildgCmd, args...)
-	cmd.Env = append(append(os.Environ(), "BUILDG_PS1"+"="+prompt), gotOpts.env...)
+	cmd.Env = append(cmd.Env, "BUILDG_PS1"+"="+prompt)
 	stdinP, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatal(err)
