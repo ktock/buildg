@@ -14,9 +14,12 @@ import (
 
 	"github.com/containerd/console"
 	"github.com/containerd/containerd/pkg/userns"
+	"github.com/containerd/containerd/remotes/docker"
 	"github.com/containerd/containerd/snapshots/native"
 	"github.com/ktock/buildg/pkg/version"
 	"github.com/moby/buildkit/cache/remotecache"
+	localremotecache "github.com/moby/buildkit/cache/remotecache/local"
+	registryremotecache "github.com/moby/buildkit/cache/remotecache/registry"
 	"github.com/moby/buildkit/client"
 	"github.com/moby/buildkit/cmd/buildctl/build"
 	"github.com/moby/buildkit/cmd/buildkitd/config"
@@ -144,11 +147,14 @@ func newDebugCommand() cli.Command {
 				Name:  "ssh",
 				Usage: "Allow forwarding SSH agent to the build. Format: default|<id>[=<socket>|<key>[,<key>]]",
 			},
+			cli.StringSliceFlag{
+				Name:  "cache-from",
+				Usage: "Import build cache from the specified location. e.g. user/app:cache, type=local,src=path/to/dir",
+			},
 			cli.BoolFlag{
 				Name:  "cache-reuse",
-				Usage: "Reuse previously cached results (experimental).",
+				Usage: "Reuse locally cached previous results (experimental).",
 			},
-			// TODO: no-cache, output, tag, ssh, secret, quiet, cache-from, cache-to, rm
 		},
 	}
 }
@@ -567,13 +573,27 @@ func parseSolveOpt(clicontext *cli.Context) (*client.SolveOpt, error) {
 		}
 		attachable = append(attachable, secretProvider)
 	}
+	var cacheImports []client.CacheOptionsEntry
+	if cacheFrom := clicontext.StringSlice("cache-from"); len(cacheFrom) > 0 {
+		var cacheImportOpts []string
+		for _, opt := range cacheFrom {
+			if !strings.Contains(opt, "type=") {
+				opt = "type=registry,ref=" + opt
+			}
+			cacheImportOpts = append(cacheImportOpts, opt)
+		}
+		cacheImports, err = build.ParseImportCache(cacheImportOpts)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return &client.SolveOpt{
 		Exports:       exports,
 		LocalDirs:     localDirs,
 		FrontendAttrs: frontendAttrs,
 		Session:       attachable,
+		CacheImports:  cacheImports,
 		// CacheExports:
-		// CacheImports:
 	}, nil
 }
 
@@ -596,7 +616,7 @@ func newController(ctx context.Context, cfg *config.Config, debugController *deb
 	}()
 
 	// Initialize OCI worker with debugging support
-	w, err := newWorker(ctx, cfg)
+	w, resolverFunc, err := newWorker(ctx, cfg)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -623,13 +643,17 @@ func newController(ctx context.Context, cfg *config.Config, debugController *deb
 	}
 	frontends := map[string]frontend.Frontend{}
 	frontends["gateway.v0"] = gwfrontend
+	remoteCacheImporterFuncs := map[string]remotecache.ResolveCacheImporterFunc{
+		"registry": registryremotecache.ResolveCacheImporterFunc(sessionManager, w.ContentStore(), resolverFunc),
+		"local":    localremotecache.ResolveCacheImporterFunc(sessionManager),
+	}
 	controller, err := control.NewController(control.Opt{
 		SessionManager:            sessionManager,
 		WorkerController:          wc,
 		CacheKeyStorage:           cacheStorage,
 		Frontends:                 frontends,
+		ResolveCacheImporterFuncs: remoteCacheImporterFuncs,
 		ResolveCacheExporterFuncs: map[string]remotecache.ResolveCacheExporterFunc{}, // TODO: support remote cahce exporter
-		ResolveCacheImporterFuncs: map[string]remotecache.ResolveCacheImporterFunc{}, // TODO: support remote cache importer
 		Entitlements:              []string{},                                        // TODO
 	})
 	if err != nil {
@@ -650,10 +674,10 @@ func newController(ctx context.Context, cfg *config.Config, debugController *deb
 	return c, done, nil
 }
 
-func newWorker(ctx context.Context, cfg *config.Config) (worker.Worker, error) {
+func newWorker(ctx context.Context, cfg *config.Config) (worker.Worker, docker.RegistryHosts, error) {
 	root := cfg.Root
 	if root == "" {
-		return nil, fmt.Errorf("failed to init worker: root directory must be set")
+		return nil, nil, fmt.Errorf("failed to init worker: root directory must be set")
 	}
 	snFactory := runc.SnapshotterFactory{
 		Name: "native", // TODO: support other snapshotters
@@ -670,10 +694,15 @@ func newWorker(ctx context.Context, cfg *config.Config) (worker.Worker, error) {
 	}
 	opt, err := runc.NewWorkerOpt(root, snFactory, rootless, oci.ProcessSandbox, nil, nil, nc, nil, "", "", nil, "", "")
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	opt.RegistryHosts = resolver.NewRegistryConfig(cfg.Registries)
-	return base.NewWorker(ctx, opt)
+	resolverFunc := resolver.NewRegistryConfig(cfg.Registries)
+	opt.RegistryHosts = resolverFunc
+	w, err := base.NewWorker(ctx, opt)
+	if err != nil {
+		return nil, nil, err
+	}
+	return w, resolverFunc, nil
 }
 
 func defaultServeRootDir(rootDir string) string {
