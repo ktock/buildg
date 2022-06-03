@@ -202,7 +202,8 @@ Flags:
 - `--image value`: Image to use for debugging stage. Specify `--image` flag for [`exec`](#exec) command in debug shell when use this image.
 - `--secret value` : Secret value exposed to the build. Format: `id=secretname,src=filepath`
 - `--ssh value` : Allow forwarding SSH agent to the build. Format: `default|<id>[=<socket>|<key>[,<key>]]`
-- `--cache-reuse` : Reuse previously cached results (experimental).
+- `--cache-from value`: Import build cache from the specified location. e.g. `user/app:cache`, `type=local,src=path/to/dir` (see [`./docs/cache-from.md`](./docs/cache-from.md))
+- `--cache-reuse` : Reuse locally cached previous results (experimental).
 
 ## buildg prune
 
@@ -332,3 +333,7 @@ Usage: `help [COMMAND]`
 - `--oci-cni-config-path value`: Path to CNI config file (default: "/etc/buildkit/cni.json")
 - `--oci-cni-binary-path value`: Path to CNI plugin binary dir (default: "/opt/cni/bin")
 - `--rootless`: Enable rootless configuration
+
+# Additional documents
+
+- [`./docs/cache-from.md`](./docs/cache-from.md): Inspecting remotely cached build using `--cache-from` flag.
