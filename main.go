@@ -15,7 +15,10 @@ import (
 	"github.com/containerd/console"
 	"github.com/containerd/containerd/pkg/userns"
 	"github.com/containerd/containerd/remotes/docker"
+	ctdsnapshots "github.com/containerd/containerd/snapshots"
 	"github.com/containerd/containerd/snapshots/native"
+	"github.com/containerd/containerd/snapshots/overlay"
+	"github.com/containerd/containerd/snapshots/overlay/overlayutils"
 	"github.com/ktock/buildg/pkg/version"
 	"github.com/moby/buildkit/cache/remotecache"
 	localremotecache "github.com/moby/buildkit/cache/remotecache/local"
@@ -70,6 +73,11 @@ func main() {
 		cli.StringSliceFlag{
 			Name:  "root",
 			Usage: "Path to the root directory for storing data (e.g. \"/var/lib/buildg\")",
+		},
+		cli.StringFlag{
+			Name:  "oci-worker-snapshotter",
+			Usage: "Worker snapshotter: \"auto\", \"overlayfs\", \"native\"",
+			Value: "auto",
 		},
 		cli.StringFlag{
 			Name:  "oci-worker-net",
@@ -473,6 +481,7 @@ func parseGlobalWorkerConfig(clicontext *cli.Context) (cfg *config.Config, rootD
 		CNIConfigPath: clicontext.GlobalString("oci-cni-config-path"),
 		CNIBinaryPath: clicontext.GlobalString("oci-cni-binary-path"),
 	}
+	cfg.Workers.OCI.Snapshotter = clicontext.GlobalString("oci-worker-snapshotter")
 	rootDir = clicontext.GlobalString("root")
 	if rootDir == "" {
 		rootDir, err = rootDataDir(cfg.Workers.OCI.Rootless)
@@ -679,9 +688,32 @@ func newWorker(ctx context.Context, cfg *config.Config) (worker.Worker, docker.R
 	if root == "" {
 		return nil, nil, fmt.Errorf("failed to init worker: root directory must be set")
 	}
-	snFactory := runc.SnapshotterFactory{
-		Name: "native", // TODO: support other snapshotters
-		New:  native.NewSnapshotter,
+	snName := cfg.Workers.OCI.Snapshotter
+	if snName == "auto" {
+		if err := overlayutils.Supported(root); err == nil {
+			snName = "overlayfs"
+		} else {
+			logrus.Debugf("overlayfs isn't supported. falling back to native snapshotter")
+			snName = "native"
+		}
+		logrus.Debugf("%q is used as the auto snapshotter", snName)
+	}
+	var snFactory runc.SnapshotterFactory
+	switch snName {
+	case "native":
+		snFactory = runc.SnapshotterFactory{
+			Name: snName,
+			New:  native.NewSnapshotter,
+		}
+	case "overlayfs":
+		snFactory = runc.SnapshotterFactory{
+			Name: snName,
+			New: func(root string) (ctdsnapshots.Snapshotter, error) {
+				return overlay.NewSnapshotter(root, overlay.AsynchronousRemove)
+			},
+		}
+	default:
+		return nil, nil, fmt.Errorf("unknown snapshotter %q", snName)
 	}
 	rootless := cfg.Workers.OCI.Rootless
 	nc := netproviders.Opt{
