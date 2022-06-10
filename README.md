@@ -329,6 +329,7 @@ Usage: `help [COMMAND]`
 ## Global flags
 
 - `--root` : Path to the root directory for storing data (e.g. "/var/lib/buildg").
+- `--oci-worker-snapshotter value`: Worker snapshotter: "auto", "overlayfs", "native" (default: "auto")
 - `--oci-worker-net value`: Worker network type: "auto", "cni", "host" (default: "auto")
 - `--oci-cni-config-path value`: Path to CNI config file (default: "/etc/buildkit/cni.json")
 - `--oci-cni-binary-path value`: Path to CNI plugin binary dir (default: "/opt/cni/bin")
