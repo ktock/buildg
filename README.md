@@ -209,7 +209,7 @@ Flags:
 
 Prune cache
 
-Usage: `buildg prune [command options]`
+Usage: `buildg prune [OPTIONS]`
 
 Flags:
 

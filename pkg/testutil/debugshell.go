@@ -249,7 +249,3 @@ func NewTempContext(t *testing.T, dt string) (p string, done func() error) {
 	}
 	return tmpCtx, func() error { return os.RemoveAll(tmpCtx) }
 }
-
-func ExecNoTTY(args string) string {
-	return "exec -i=false -t=false " + args
-}
