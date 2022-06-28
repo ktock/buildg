@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ktock/buildg/pkg/testutil"
 )
@@ -150,6 +152,61 @@ RUN date > /a
 	sh2.Do("next")
 	sh2.Do(execNoTTY("cat /a")).OutEqual(a)
 	sh2.Do(execNoTTY("--image cat /debugroot/a")).OutEqual(a2)
+	sh2.Do("c")
+	if err := sh2.Wait(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCacheReuseBindMount(t *testing.T) {
+	t.Parallel()
+
+	tmpCtx, doneTmpCtx := testutil.NewTempContext(t, fmt.Sprintf(`FROM %s
+RUN --mount=type=bind,target=/root/mnt cat /root/mnt/data/hi > /a && date > /b
+`, testutil.Mirror("busybox:1.32.0")))
+	defer doneTmpCtx()
+	if err := os.Mkdir(filepath.Join(tmpCtx, "data"), 0755); err != nil {
+		t.Fatal(err)
+		return
+	}
+	tmpData, err := os.Create(filepath.Join(tmpCtx, "data", "hi"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sampleStr := time.Now().String()
+	if _, err := tmpData.Write([]byte(sampleStr)); err != nil {
+		t.Fatal(err)
+	}
+	if err := tmpData.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	tmpRoot, err := os.MkdirTemp(os.Getenv(buildgTestTmpDirEnv), "buildg-test-tmproot")
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	defer os.RemoveAll(tmpRoot)
+
+	sh := testutil.NewDebugShell(t, tmpCtx,
+		testutil.WithGlobalOptions("--root="+tmpRoot),
+		testutil.WithOptions("--cache-reuse"))
+	defer sh.Close()
+	sh.Do("next")
+	sh.Do(execNoTTY("cat /a")).OutEqual(sampleStr)
+	b := nonEmpty(t, sh.Do(execNoTTY("cat /b")).Out())
+	sh.Do("c")
+	if err := sh.Wait(); err != nil {
+		t.Fatal(err)
+	}
+
+	sh2 := testutil.NewDebugShell(t, tmpCtx,
+		testutil.WithGlobalOptions("--root="+tmpRoot),
+		testutil.WithOptions("--cache-reuse"))
+	defer sh2.Close()
+	sh2.Do("next")
+	sh2.Do(execNoTTY("cat /a")).OutEqual(sampleStr)
+	sh2.Do(execNoTTY("cat /b")).OutEqual(b)
 	sh2.Do("c")
 	if err := sh2.Wait(); err != nil {
 		t.Fatal(err)
