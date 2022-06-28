@@ -111,6 +111,51 @@ RUN date > /ok
 	}
 }
 
+func TestCacheReuseDebugImage(t *testing.T) {
+	t.Parallel()
+	tmpCtx, doneTmpCtx := testutil.NewTempContext(t, fmt.Sprintf(`FROM %s
+RUN date > /a
+`, testutil.Mirror("busybox:1.32.0")))
+	defer doneTmpCtx()
+
+	tmpRoot, err := os.MkdirTemp(os.Getenv(buildgTestTmpDirEnv), "buildg-test-tmproot")
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	defer os.RemoveAll(tmpRoot)
+
+	sh := testutil.NewDebugShell(t, tmpCtx,
+		testutil.WithGlobalOptions("--root="+tmpRoot),
+		testutil.WithOptions(
+			"--cache-reuse",
+			"--image="+testutil.Mirror("ubuntu:20.04"),
+		))
+	defer sh.Close()
+	sh.Do("next")
+	a := nonEmpty(t, sh.Do(execNoTTY("cat /a")).Out())
+	a2 := nonEmpty(t, sh.Do(execNoTTY("--image cat /debugroot/a")).Out())
+	sh.Do("c")
+	if err := sh.Wait(); err != nil {
+		t.Fatal(err)
+	}
+
+	sh2 := testutil.NewDebugShell(t, tmpCtx,
+		testutil.WithGlobalOptions("--root="+tmpRoot),
+		testutil.WithOptions(
+			"--cache-reuse",
+			"--image="+testutil.Mirror("ubuntu:20.04"),
+		))
+	defer sh2.Close()
+	sh2.Do("next")
+	sh2.Do(execNoTTY("cat /a")).OutEqual(a)
+	sh2.Do(execNoTTY("--image cat /debugroot/a")).OutEqual(a2)
+	sh2.Do("c")
+	if err := sh2.Wait(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestCacheMultiReuse(t *testing.T) {
 	t.Parallel()
 	tmpCtx, doneTmpCtx := testutil.NewTempContext(t, fmt.Sprintf(`FROM %s AS base
