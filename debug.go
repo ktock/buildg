@@ -288,9 +288,10 @@ type debugOpWrapper struct {
 
 func (o *debugOpWrapper) LoadCacheHook(ctx context.Context, inputs []solver.Result, outputs []solver.Result) {
 	logrus.Infof("CACHED %v", o.vertex.Name())
+	execInputs, execMounts := o.getResultMounts(inputs, outputs)
 	if err := o.worker.notifyAndWait(ctx, status{
-		inputs: inputs,
-		mounts: outputs,
+		inputs: execInputs,
+		mounts: execMounts,
 		vertex: o.vertex.Digest(),
 		op:     o.vertex.Sys().(*pb.Op),
 	}); err != nil {
@@ -307,22 +308,8 @@ func (o *debugOpWrapper) Exec(ctx context.Context, g session.Group, inputs []sol
 		if errors.As(err, &ee) {
 			execInputs, execMounts = ee.Inputs, ee.Mounts
 		}
-	} else if execOp, ok := o.vertex.Sys().(*pb.Op).Op.(*pb.Op_Exec); ok {
-		execInputs = make([]solver.Result, len(execOp.Exec.Mounts))
-		for i, m := range execOp.Exec.Mounts {
-			if m.Input < 0 {
-				continue
-			}
-			execInputs[i] = inputs[m.Input].Clone()
-		}
-		execMounts = make([]solver.Result, len(execOp.Exec.Mounts))
-		copy(execMounts, execInputs)
-		for i, m := range execOp.Exec.Mounts {
-			if m.Output < 0 {
-				continue
-			}
-			execMounts[i] = outputs[m.Output].Clone()
-		}
+	} else {
+		execInputs, execMounts = o.getResultMounts(inputs, outputs)
 	}
 	if nErr := o.worker.notifyAndWait(ctx, status{
 		inputs: execInputs,
@@ -337,4 +324,33 @@ func (o *debugOpWrapper) Exec(ctx context.Context, g session.Group, inputs []sol
 	}
 
 	return outputs, err
+}
+
+func (o *debugOpWrapper) getResultMounts(inputs []solver.Result, outputs []solver.Result) (execInputs, execMounts []solver.Result) {
+	if execOp, ok := o.vertex.Sys().(*pb.Op).Op.(*pb.Op_Exec); ok {
+		execInputs = make([]solver.Result, len(execOp.Exec.Mounts))
+		for i, m := range execOp.Exec.Mounts {
+			if m.Input < 0 {
+				continue
+			}
+			if len(inputs) <= int(m.Input) {
+				logrus.Debugf("input %d is not provided (inputs len: %d)", m.Input, len(inputs))
+				continue
+			}
+			execInputs[i] = inputs[m.Input].Clone()
+		}
+		execMounts = make([]solver.Result, len(execOp.Exec.Mounts))
+		copy(execMounts, execInputs)
+		for i, m := range execOp.Exec.Mounts {
+			if m.Output < 0 {
+				continue
+			}
+			if len(outputs) <= int(m.Output) {
+				logrus.Debugf("output %d is not provided (outputs len: %d)", m.Output, len(outputs))
+				continue
+			}
+			execMounts[i] = outputs[m.Output].Clone()
+		}
+	}
+	return execInputs, execMounts
 }
