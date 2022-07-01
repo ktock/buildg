@@ -12,6 +12,37 @@ This is provided throgh [DAP(Debug Adapter Protocol)](https://microsoft.github.i
 - Emacs: [`./emacs`](./emacs)
 - Neovim: [`./nvim`](./nvim)
 
+## Repl commands
+
+### exec
+
+Execute command in the step.
+Only supported on RUN instructions as of now.
+
+Alias: `e`
+
+Usage: `exec [OPTIONS] [ARGS...]`
+
+If `ARGS` isn't provided, `/bin/sh` is used by default.
+
+Flags:
+
+- `--image`: Execute command in the debuger image specified by `image` property in the lauch configuration. If not specified, the command is executed on the rootfs of the current step.
+- `--mountroot value`: Mountpoint to mount the rootfs of the step. ignored if `--image` isn't specified. (default: `/debugroot`)
+- `--init-state`: Execute commands in an initial state of that step (experimental)
+- `--tty`, `-t`: Allocate tty (enabled by default)
+- `-i`: Enable stdin. (FIXME: must be set with tty) (enabled by default)
+- `--env value`, `-e value`: Set environment variables
+- `--workdir value`, `-w value`: Working directory inside the container
+
+### help
+
+Shows a list of commands or help for one command
+
+Alias: `h`
+
+Usage: `help [COMMAND]`
+
 ## Launch Configuration
 
 In the launch configuration (e.g. `launch.json` on VS Code), the following properties are provided.
