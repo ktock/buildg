@@ -27,7 +27,7 @@ buildg debug --image=debugging-tools /path/to/build/context
 
 For the detailed command refenrece, refer to [Command reference](#command-reference) in the following
 
-### Exmaple
+### Exmaple with terminal
 
 Debug the following Dockerfile:
 
@@ -109,6 +109,15 @@ hi
 (buildg) quit
 ```
 
+## Use on IDEs
+
+Buildg allows visual and interactive debugging of Dockerfile on editors like VS Code, emacs and Neovim.
+This is provided throgh [DAP(Debug Adapter Protocol)](https://microsoft.github.io/debug-adapter-protocol/) supported by editors [(official list)](https://microsoft.github.io/debug-adapter-protocol/implementors/tools/).
+
+See [`./examples/dap/README.md`](./examples/dap/README.md) for usage of DAP.
+
+![Buildg on VS Code](./docs/images/vscode-dap.png)
+
 ## Install
 
 - Requirements
@@ -173,6 +182,9 @@ Leveraging the generic features added through the work, this project implements 
 - [buildg debug](#buildg-debug)
 - [buildg prune](#buildg-prune)
 - [buildg du](#buildg-du)
+- [buildg dap serve](#buildg-dap-serve)
+- [buildg dap prune](#buildg-dap-prune)
+- [buildg dap du](#buildg-dap-du)
 - [Debug shell commands](#debug-shell-commands)
   - [break](#break)
   - [breakpoints](#breakpoints)
@@ -220,6 +232,35 @@ Flags:
 Show disk usage information
 
 Usage: `buildg du`
+
+## buildg dap serve
+
+Serve Debug Adapter Protocol (DAP) via stdio.
+Should be called from editors. 
+See [`./examples/dap/README.md`](./examples/dap/README.md) for usage of DAP.
+
+Usage: `buildg dap serve [OPTIONS] [ARGS...]`
+
+Flags:
+- `--log-file value`: Path to the file to output logs
+
+## buildg dap prune
+
+Prune DAP cache.
+See [`./examples/dap/README.md`](./examples/dap/README.md) for usage of DAP.
+
+Usage: `buildg dap prune [OPTIONS]`
+
+Flags:
+
+- `--all`: Prune including internal/frontend references
+
+## buildg dap du
+
+Show disk usage of DAP cache
+See [`./examples/dap/README.md`](./examples/dap/README.md) for usage of DAP.
+
+Usage: `buildg dap du`
 
 ## Debug shell commands
 

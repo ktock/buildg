@@ -5,7 +5,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 
+	"github.com/ktock/buildg/pkg/buildkit"
 	"github.com/moby/buildkit/solver/pb"
 	"github.com/urfave/cli"
 )
@@ -48,23 +50,23 @@ func listCommand(ctx context.Context, hCtx *handlerContext) cli.Command {
 			if a := clicontext.Int("A"); a != defaultListRange {
 				after = a
 			}
-			printLines(hCtx.handler, hCtx.locs, before, after, clicontext.Bool("all"))
+			printLines(hCtx.handler, hCtx.stdout, hCtx.locs, before, after, clicontext.Bool("all"))
 			return nil
 		},
 	}
 }
 
-func printLines(h *handler, locs []*location, before, after int, all bool) {
+func printLines(h *buildkit.Handler, w io.Writer, locs []*buildkit.Location, before, after int, all bool) {
 	sources := make(map[*pb.SourceInfo][]*pb.Range)
 	for _, l := range locs {
-		sources[l.source] = append(sources[l.source], l.ranges...)
+		sources[l.Source] = append(sources[l.Source], l.Ranges...)
 	}
 
 	for source, ranges := range sources {
 		if len(ranges) == 0 {
 			continue
 		}
-		fmt.Printf("Filename: %q\n", source.Filename)
+		fmt.Fprintf(w, "Filename: %q\n", source.Filename)
 		scanner := bufio.NewScanner(bytes.NewReader(source.Data))
 		lastLinePrinted := false
 		firstPrint := true
@@ -86,12 +88,12 @@ func printLines(h *handler, locs []*location, before, after int, all bool) {
 				continue
 			}
 			if !lastLinePrinted && !firstPrint {
-				fmt.Println("----------------")
+				fmt.Fprintln(w, "----------------")
 			}
 
 			prefix := " "
-			h.breakpoints.forEach(func(key string, b breakpoint) bool {
-				if b.addMark(source, int64(i)) {
+			h.Breakpoints().ForEach(func(key string, b buildkit.Breakpoint) bool {
+				if b.IsMarked(source, int64(i)) {
 					prefix = "*"
 					return false
 				}
@@ -101,7 +103,7 @@ func printLines(h *handler, locs []*location, before, after int, all bool) {
 			if target {
 				prefix2 = "=>"
 			}
-			fmt.Println(prefix + prefix2 + fmt.Sprintf("%4d| ", i) + scanner.Text())
+			fmt.Fprintln(w, prefix+prefix2+fmt.Sprintf("%4d| ", i)+scanner.Text())
 			lastLinePrinted = true
 			firstPrint = false
 		}
