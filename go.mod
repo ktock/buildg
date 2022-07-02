@@ -9,7 +9,7 @@ require (
 	github.com/google/go-dap v0.6.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/moby/buildkit v0.0.0-00010101000000-000000000000
-	github.com/moby/sys/signal v0.6.0
+	github.com/moby/sys/signal v0.7.0
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.8.1
