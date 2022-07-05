@@ -12,6 +12,8 @@ This is provided throgh [DAP(Debug Adapter Protocol)](https://microsoft.github.i
 - Emacs: [`./emacs`](./emacs)
 - Neovim: [`./nvim`](./nvim)
 
+Refer to the VS Code documentation for UI usage: https://code.visualstudio.com/docs/editor/debugging
+
 ## Repl commands
 
 ### exec
@@ -55,3 +57,17 @@ In the launch configuration (e.g. `launch.json` on VS Code), the following prope
 - `ssh` *array* : Allow forwarding SSH agent to the build. Format: `default|<id>[=<socket>|<key>[,<key>]]`
 - `secrets` *array* : Expose secret value to the build. Format: `id=secretname,src=filepath`
 
+Common and mandatory properties are the following (see [VS Code documentation](https://code.visualstudio.com/docs/editor/debugging#_launchjson-attributes) for details).
+
+- `type` : Type of debugger to use. Must be `dockerfile`.
+- `request` : The request type. `launch` is only supported in buildg as of now.
+- `name` : The reader-friendly name of this configuration.
+
+## Known Limitations
+
+Following lists the current known limitations that should be eliminated in the futural version.
+
+- `Step Into` and `Step Out` in Debug toolbar is unsupported in buildg. To inspect instructions deeper, you can use [`exec`](#exec) REPL command instead.
+- Logpoint, conditional, function and data breakpoints aren't supported.
+- Setting value to a variable isn't supported.
+- `attach` request type in launch configuration isn't supported.
