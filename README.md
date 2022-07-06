@@ -137,6 +137,8 @@ Install and use [`buildg.sh`](./extras/buildg.sh).
 $ buildg.sh debug /path/to/context
 ```
 
+> NOTE: [buildg on IDEs (VS Code, Emacs, Neovim, etc.)](./examples/dap/) require this configuration
+
 The doc in BuildKit project for troubleshooting: https://github.com/moby/buildkit/blob/master/docs/rootless.md#troubleshooting
 
 ### Building binary using make
