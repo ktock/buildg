@@ -124,6 +124,8 @@ See [`./examples/dap/README.md`](./examples/dap/README.md) for usage of DAP.
   - [runc](https://github.com/opencontainers/runc)
   - [OPTIONAL] [RootlessKit](https://github.com/rootless-containers/rootlesskit) and [slirp4netns](https://github.com/rootless-containers/slirp4netns) for rootless execution
 
+> NOTE: Native execution is supported only on Linux as of now. On other platforms, please run buildg on Linux VM (e.g. [Lima](https://github.com/lima-vm/lima), etc)
+
 ### Release binaries
 
 Available from https://github.com/ktock/buildg/releases
