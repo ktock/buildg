@@ -243,7 +243,7 @@ Serve Debug Adapter Protocol (DAP) via stdio.
 Should be called from editors. 
 See [`./examples/dap/README.md`](./examples/dap/README.md) for usage of DAP.
 
-Usage: `buildg dap serve [OPTIONS] [ARGS...]`
+Usage: `buildg dap serve [OPTIONS]`
 
 Flags:
 - `--log-file value`: Path to the file to output logs
