@@ -88,8 +88,6 @@ jobs:
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=ref,event=pr
-            type=edge
           labels: |
             org.opencontainers.image.title=buildg
             org.opencontainers.image.description=Interactive debugger for Dockerfile, with support for IDEs (VS Code, Emacs, Neovim, etc.)
