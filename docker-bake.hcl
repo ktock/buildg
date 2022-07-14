@@ -5,7 +5,6 @@ variable "GO_VERSION" {
 target "_common" {
   args = {
     GO_VERSION = GO_VERSION
-    BUILDKIT_CONTEXT_KEEP_GIT_DIR = 1
   }
 }
 

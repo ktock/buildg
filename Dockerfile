@@ -1,5 +1,5 @@
 ARG GO_VERSION=1.18
-ARG $=v1.1.3
+ARG RUNC_VERSION=v1.1.3
 
 # syntax = docker/dockerfile:1.4.0
 FROM --platform=${BUILDPLATFORM} golang:${GO_VERSION}-alpine AS base
@@ -37,10 +37,10 @@ RUN git checkout ${RUNC_VERSION} && \
 ENV CGO_ENABLED=1
 RUN GOARCH=amd64 CC=x86_64-linux-gnu-gcc make static && \
   cp -a runc /out/runc.amd64
-RUN GOARCH=${TARGETARCH} CC=aarch64-linux-gnu-gcc make static && \
+RUN GOARCH=arm64 CC=aarch64-linux-gnu-gcc make static && \
   cp -a runc /out/runc.arm64
 
-FROM scratch AS bin-unix
+FROM ghcr.io/distroless/static:latest AS bin-unix
 COPY --from=build /out/buildg /
 COPY --from=build-runc /out/runc.${TARGETARCH:-amd64} /usr/local/bin/runc
 
