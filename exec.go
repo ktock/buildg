@@ -22,7 +22,7 @@ func execCommand(ctx context.Context, hCtx *handlerContext) cli.Command {
 		UsageText: `exec [OPTIONS] [ARGS...]
 
 If ARGS isn't provided, "/bin/sh" is used by default.
-Only supported on RUN instructions as of now.
+container execution on non-RUN instruction is experimental.
 `,
 		Flags: []cli.Flag{
 			cli.BoolFlag{

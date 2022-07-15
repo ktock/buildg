@@ -19,7 +19,6 @@ Refer to the VS Code documentation for UI usage: https://code.visualstudio.com/d
 ### exec
 
 Execute command in the step.
-Only supported on RUN instructions as of now.
 
 Alias: `e`
 
