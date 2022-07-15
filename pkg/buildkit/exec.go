@@ -39,7 +39,10 @@ func ExecContainer(ctx context.Context, cfg ContainerConfig) (_ gwclient.Contain
 	case *pb.Op_Exec:
 		exec = op.Exec
 	default:
-		return nil, nil, fmt.Errorf("this instruction doesn't support exec; try on RUN instructions")
+		logrus.Infof("container execution on non-RUN instruction is experimental")
+		if len(mountIDs) != 1 {
+			return nil, nil, fmt.Errorf("one rootfs mount must be specified")
+		}
 	}
 
 	var cleanups []func()
@@ -51,18 +54,51 @@ func ExecContainer(ctx context.Context, cfg ContainerConfig) (_ gwclient.Contain
 		}
 	}()
 
+	var networkMode pb.NetMode
+	var securityMode pb.SecurityMode
 	var mounts []gwclient.Mount
-	for i, mnt := range exec.Mounts {
-		mounts = append(mounts, gwclient.Mount{
-			Selector:  mnt.Selector,
-			Dest:      mnt.Dest,
-			ResultID:  mountIDs[i],
-			Readonly:  mnt.Readonly,
-			MountType: mnt.MountType,
-			CacheOpt:  mnt.CacheOpt,
-			SecretOpt: mnt.SecretOpt,
-			SSHOpt:    mnt.SSHOpt,
-		})
+	var env []string
+	var user string
+	var cwd string
+	if exec != nil {
+		for i, mnt := range exec.Mounts {
+			mounts = append(mounts, gwclient.Mount{
+				Selector:  mnt.Selector,
+				Dest:      mnt.Dest,
+				ResultID:  mountIDs[i],
+				Readonly:  mnt.Readonly,
+				MountType: mnt.MountType,
+				CacheOpt:  mnt.CacheOpt,
+				SecretOpt: mnt.SecretOpt,
+				SSHOpt:    mnt.SSHOpt,
+			})
+		}
+		networkMode = exec.Network
+		meta := exec.Meta
+		cwd = meta.Cwd
+		if cfg.Cwd != "" {
+			cwd = cfg.Cwd
+		}
+		env = append(meta.Env, cfg.Env...)
+		user = meta.User
+		securityMode = exec.Security
+	} else {
+		logrus.Warnf("No execution info is provided from Op; Running a container with a default configuration")
+		mounts = []gwclient.Mount{
+			{
+				Dest:      "/",
+				ResultID:  mountIDs[0],
+				MountType: pb.MountType_BIND,
+			},
+		}
+		networkMode = pb.NetMode_NONE // TODO: support network
+		cwd = "/"
+		if cfg.Cwd != "" {
+			cwd = cfg.Cwd
+		}
+		env = append([]string{"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"}, cfg.Env...)
+		user = ""
+		securityMode = pb.SecurityMode_SANDBOX
 	}
 	if cfg.Image != nil {
 		for i := range mounts {
@@ -76,10 +112,9 @@ func ExecContainer(ctx context.Context, cfg ContainerConfig) (_ gwclient.Contain
 			},
 		}, mounts...)
 	}
-
 	ctr, err := cfg.GatewayClient.NewContainer(ctx, gwclient.NewContainerRequest{
 		Mounts:      mounts,
-		NetMode:     exec.Network,
+		NetMode:     networkMode,
 		Platform:    op.Platform,
 		Constraints: op.Constraints,
 	})
@@ -87,21 +122,16 @@ func ExecContainer(ctx context.Context, cfg ContainerConfig) (_ gwclient.Contain
 		return nil, nil, fmt.Errorf("failed to create debug container: %v", err)
 	}
 	cleanups = append(cleanups, func() { ctr.Release(ctx) })
-	meta := exec.Meta
-	cwd := meta.Cwd
-	if cfg.Cwd != "" {
-		cwd = cfg.Cwd
-	}
 	proc, err := ctr.Start(ctx, gwclient.StartRequest{
 		Args:         cfg.Args,
-		Env:          append(meta.Env, cfg.Env...),
-		User:         meta.User,
+		Env:          env,
+		User:         user,
 		Cwd:          cwd,
 		Tty:          cfg.Tty,
 		Stdin:        cfg.Stdin,
 		Stdout:       cfg.Stdout,
 		Stderr:       cfg.Stderr,
-		SecurityMode: exec.Security,
+		SecurityMode: securityMode,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to start container: %w", err)

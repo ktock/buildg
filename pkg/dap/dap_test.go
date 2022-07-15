@@ -428,6 +428,69 @@ RUN echo -n c > /c`, testutil.Mirror("busybox:1.32.0"))
 	c.continueAndExit(t)
 }
 
+func TestExecNonRun(t *testing.T) {
+	t.Parallel()
+	dt := fmt.Sprintf(`FROM %s AS dev
+RUN echo -n hi > /a
+
+FROM %s
+COPY --from=dev /a /b
+RUN cat /b
+`, testutil.Mirror("busybox:1.32.0"), testutil.Mirror("busybox:1.32.0"))
+	tmpCtx, doneTmpCtx := testutil.NewTempContext(t, dt)
+	defer doneTmpCtx()
+
+	s := testutil.NewDAPServer(t)
+	defer s.Close()
+	c := newDAPClient(t, s.Conn())
+	c.start(t, LaunchConfig{
+		Program:     filepath.Join(tmpCtx, "Dockerfile"),
+		StopOnEntry: true,
+		Image:       testutil.Mirror("ubuntu:20.04"),
+	}, []dap.SourceBreakpoint{
+		{
+			Line: 2,
+		},
+		{
+			Line: 5,
+		},
+	}, true)
+	if out := c.execContainer(t, "cat /a"); out != "" {
+		t.Fatalf("wanted: \"\"; got: %q", out)
+	}
+	c.continueAndStop(t, 2)
+	if out := c.execContainer(t, "cat /a"); out != "hi" {
+		t.Fatalf("wanted: \"hi\"; got: %q", out)
+	}
+	if out := c.execContainer(t, "cat /b"); out != "" {
+		t.Fatalf("wanted: \"\"; got: %q", out)
+	}
+	c.continueAndStop(t, 5)
+	if out := c.execContainer(t, "cat /a"); out != "" {
+		t.Fatalf("wanted: \"\"; got: %q", out)
+	}
+	if out := c.execContainer(t, "cat /b"); out != "hi" {
+		t.Fatalf("wanted: \"hi\"; got: %q", out)
+	}
+
+	if out := c.execContainer(t, "--image cat /debugroot/b"); out != "hi" {
+		t.Fatalf("wanted: \"hi\"; got: %q", out)
+	}
+	if out := c.execContainer(t, "--image cat /etc/os-release"); !strings.Contains(out, `NAME="Ubuntu"`) {
+		t.Fatalf("wanted: \"NAME=\"Ubuntu\"\"; got: %q", out)
+	}
+	if out := c.execContainer(t, "--image --mountroot=/testdebugroot/rootdir/ cat /testdebugroot/rootdir/b"); out != "hi" {
+		t.Fatalf("wanted: \"hi\"; got: %q", out)
+	}
+	if out := c.execContainer(t, `-e MSG=hello -e MSG2=world /bin/sh -c "echo -n $MSG $MSG2"`); out != "hello world" {
+		t.Fatalf("wanted: \"hello world\"; got: %q", out)
+	}
+	if out := c.execContainer(t, `--workdir /tmp /bin/sh -c "echo -n $(pwd)"`); out != "/tmp" {
+		t.Fatalf("wanted: \"/tmp\"; got: %q", out)
+	}
+	c.continueAndExit(t)
+}
+
 func TestExecSecrets(t *testing.T) {
 	t.Parallel()
 	dt := fmt.Sprintf(`FROM %s
@@ -754,6 +817,69 @@ RUN date > /
 		t.Fatalf("shouldn't be %q; got %q", b2, out)
 	}
 	cp.nextAndExit(t)
+}
+
+func TestCacheReuseNonRun(t *testing.T) {
+	t.Parallel()
+	tmpCtx, doneTmpCtx := testutil.NewTempContext(t, fmt.Sprintf(`FROM %s AS dev
+RUN date > /a
+
+FROM %s
+COPY --from=dev /a /b
+RUN cat /b
+`, testutil.Mirror("busybox:1.32.0"), testutil.Mirror("busybox:1.32.0")))
+	defer doneTmpCtx()
+
+	tmpRoot, err := os.MkdirTemp(os.Getenv(testutil.BuildgTestTmpDirEnv), "buildg-test-tmproot")
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	defer os.RemoveAll(tmpRoot)
+
+	s := testutil.NewDAPServer(t, testutil.WithDAPServerGlobalOptions("--root="+tmpRoot))
+	defer s.Close()
+	c := newDAPClient(t, s.Conn())
+	c.start(t, LaunchConfig{
+		Program:     filepath.Join(tmpCtx, "Dockerfile"),
+		StopOnEntry: true,
+	}, []dap.SourceBreakpoint{}, true)
+	c.nextAndStop(t, 2)
+	a := nonEmpty(t, c.execContainer(t, "cat /a"))
+	c.nextAndStop(t, 5)
+	b := nonEmpty(t, c.execContainer(t, "cat /b"))
+	c.nextAndStop(t, 6)
+	b2 := nonEmpty(t, c.execContainer(t, "cat /b"))
+	c.nextAndExit(t)
+	s.Close()
+	if a != b {
+		t.Fatalf("wanted %q; got %q", a, b)
+	}
+	if b != b2 {
+		t.Fatalf("wanted %q; got %q", b, b2)
+	}
+
+	s2 := testutil.NewDAPServer(t, testutil.WithDAPServerGlobalOptions("--root="+tmpRoot))
+	defer s2.Close()
+	c2 := newDAPClient(t, s2.Conn())
+	c2.start(t, LaunchConfig{
+		Program:     filepath.Join(tmpCtx, "Dockerfile"),
+		StopOnEntry: true,
+	}, []dap.SourceBreakpoint{}, true)
+	c2.nextAndStop(t, 2)
+	if out := c2.execContainer(t, "cat /a"); out != a {
+		t.Fatalf("want %q; got %q", a, out)
+	}
+	c2.nextAndStop(t, 5)
+	if out := c2.execContainer(t, "cat /b"); out != b {
+		t.Fatalf("want %q; got %q", b, out)
+	}
+	c2.nextAndStop(t, 6)
+	if out := c2.execContainer(t, "cat /b"); out != b2 {
+		t.Fatalf("want %q; got %q", b2, out)
+	}
+	c2.nextAndExit(t)
+	s2.Close()
 }
 
 func TestDisconnect(t *testing.T) {

@@ -605,7 +605,7 @@ func (s *Server) execCommand(_ context.Context, hCtx *handlerContext) cli.Comman
 		UsageText: `exec [OPTIONS] [ARGS...]
 
 If ARGS isn't provided, "/bin/sh" is used by default.
-Only supported on RUN instructions as of now.
+container execution on non-RUN instruction is experimental
 `,
 		Flags: []cli.Flag{
 			cli.BoolFlag{
@@ -681,6 +681,11 @@ Only supported on RUN instructions as of now.
 			}
 
 			// Launch container
+			switch hCtx.breakContext.Info.Op.GetOp().(type) {
+			case *pb.Op_Exec:
+			default:
+				s.outputStdoutWriter().Write([]byte("container execution on non-RUN instruction is experimental"))
+			}
 			execCfg := buildkit.ContainerConfig{
 				Info:          hCtx.breakContext.Info,
 				Args:          args,

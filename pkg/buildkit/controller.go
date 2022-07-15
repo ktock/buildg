@@ -347,6 +347,9 @@ func (o *debugOpWrapper) getResultMounts(inputs []solver.Result, outputs []solve
 			}
 			execMounts[i] = outputs[m.Output].Clone()
 		}
+		return execInputs, execMounts
+	} else if len(outputs) == 1 {
+		return nil, outputs // If it has only one output, allow inspecting it by mounting this to the root dir.
 	}
-	return execInputs, execMounts
+	return nil, nil
 }
