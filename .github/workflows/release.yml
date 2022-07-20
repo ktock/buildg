@@ -4,6 +4,9 @@ on:
     tags:
       - 'v*'
 
+env:
+  GHCR_SLUG: ghcr.io/${{ github.repository }}
+
 jobs:
   build:
     runs-on: ubuntu-20.04
@@ -65,3 +68,51 @@ jobs:
           done
         done
         hub release create "${ASSET_FLAGS[@]}" -F ${GITHUB_WORKSPACE}/release-note.txt --draft "${RELEASE_TAG}"
+  
+  containerize:
+    runs-on: ubuntu-20.04
+    name: Containerize
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      -
+        name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: |
+            ${{ env.GHCR_SLUG }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+          labels: |
+            org.opencontainers.image.title=buildg
+            org.opencontainers.image.description=Interactive debugger for Dockerfile, with support for IDEs (VS Code, Emacs, Neovim, etc.)
+            org.opencontainers.image.vendor=${{ github.repository_owner }}
+      -
+        name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      -
+        name: Login to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      -
+        name: Build image
+        uses: docker/bake-action@v2
+        with:
+          files: |
+            ./docker-bake.hcl
+            ${{ steps.meta.outputs.bake-file }}
+          targets: image-all
+          pull: true
+          push: ${{ github.event_name != 'pull_request' }}
