@@ -162,6 +162,31 @@ $ sudo make install
 $ nerdctl builder debug /path/to/build/context
 ```
 
+### Docker
+
+You can run buildg inside Docker.
+You need to bind mount the build context to the container.
+
+```
+docker build -t buildg .
+docker run --rm -it --privileged -v /path/to/ctx:/ctx:ro buildg debug /ctx
+```
+
+You can also use [bake command by Docker Buildx](https://docs.docker.com/engine/reference/commandline/buildx_bake/):
+
+```
+docker buildx bake --set image-local.tags=buildg
+```
+
+> Tip: `--cache-reuse` experimental option + the volume at the buildg root enables to reuse cache among invocations and can speed up 2nd-time debugging.
+> 
+> ```
+> docker run --rm -it --privileged \
+>   -v buildg-cache:/var/lib/buildg \
+>   -v /path/to/ctx:/ctx:ro \
+>   buildg debug --cache-reuse /ctx
+> ```
+
 ## Motivation
 
 Debugging a large and complex Dockerfile isn't easy and can take a long time.
