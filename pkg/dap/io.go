@@ -52,7 +52,7 @@ func AttachContainerIO(root string, setTtyRaw bool) error {
 		stdin, stdout, stderr = ioSet.stdin, ioSet.stdout, ioSet.stderr
 	case err := <-errCh:
 		return err
-	case <-time.After(500 * time.Millisecond):
+	case <-time.After(3 * time.Second):
 		return fmt.Errorf("i/o timeout; check server is up and running")
 	}
 	defer func() { stdin.Close(); stdout.Close(); stderr.Close() }()
