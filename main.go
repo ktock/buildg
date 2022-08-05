@@ -138,9 +138,9 @@ func newDebugCommand() cli.Command {
 				Name:  "cache-from",
 				Usage: "Import build cache from the specified location. e.g. user/app:cache, type=local,src=path/to/dir",
 			},
-			cli.BoolFlag{
+			cli.BoolTFlag{
 				Name:  "cache-reuse",
-				Usage: "Reuse locally cached previous results (experimental).",
+				Usage: "Reuse locally cached previous results.",
 			},
 		},
 	}
@@ -324,11 +324,46 @@ func debugAction(clicontext *cli.Context) error {
 	}
 
 	// Parse config options
-	cfg, doneCfg, err := parseWorkerConfig(clicontext)
+	cfg, rootDir, err := parseGlobalWorkerConfig(clicontext)
 	if err != nil {
 		return err
 	}
-	defer doneCfg()
+	var serveRoot string
+	var cleanupAll bool
+	if clicontext.Bool("cache-reuse") {
+		// common location for storing caches for reuse.
+		// TODO: multiple concurrent build isn't supported as of now
+		defaultRoot := defaultServeRootDir(rootDir)
+		if err := os.MkdirAll(defaultRoot, 0700); err != nil {
+			return err
+		}
+		ok, unlock, err := tryLockOnBuildKitRootDir(defaultRoot)
+		if err != nil {
+			return err
+		} else if ok {
+			defer unlock()
+			serveRoot = defaultRoot
+		} else {
+			// Failed to get lock on the root dir. Fallback to the temporary location. Cache won't be used.
+			// TODO: add option to disable the fallback behaviour
+			// TODO: allow sharing root dir among instances
+			logrus.Warnf("Disabling cache because failed to acquire lock on the root dir %q; other buildg instance is running?", defaultRoot)
+		}
+	}
+	if serveRoot == "" {
+		tmpServeRoot, err := os.MkdirTemp(rootDir, "buildg")
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if err := os.RemoveAll(tmpServeRoot); err != nil {
+				logrus.WithError(err).Warnf("failed to cleanup %q", serveRoot)
+			}
+		}()
+		serveRoot = tmpServeRoot
+		cleanupAll = true
+	}
+	cfg.Root = serveRoot
 	logrus.Debugf("root dir: %q", cfg.Root)
 
 	r := newSharedReader(os.Stdin)
@@ -337,6 +372,7 @@ func debugAction(clicontext *cli.Context) error {
 		BreakpointHandler: newCommandHandler(r, os.Stdout).breakHandler,
 		DebugImage:        clicontext.String("image"),
 		StopOnEntry:       true,
+		CleanupAll:        cleanupAll,
 	})
 }
 
@@ -355,7 +391,19 @@ func pruneAction(clicontext *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	cfg.Root = defaultServeRootDir(rootDir)
+	serveRoot := defaultServeRootDir(rootDir)
+	if err := os.MkdirAll(serveRoot, 0700); err != nil {
+		return err
+	}
+	ok, unlock, err := tryLockOnBuildKitRootDir(serveRoot)
+	if err != nil {
+		return err
+	} else if ok {
+		defer unlock()
+	} else {
+		return fmt.Errorf("failed to acquire lock on the root dir; other buildg instance is running?")
+	}
+	cfg.Root = serveRoot
 	return buildkit.Prune(ctx, cfg, clicontext.Bool("all"), os.Stdout)
 }
 
@@ -374,7 +422,19 @@ func duAction(clicontext *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	cfg.Root = defaultServeRootDir(rootDir)
+	serveRoot := defaultServeRootDir(rootDir)
+	if err := os.MkdirAll(serveRoot, 0700); err != nil {
+		return err
+	}
+	ok, unlock, err := tryLockOnBuildKitRootDir(serveRoot)
+	if err != nil {
+		return err
+	} else if ok {
+		defer unlock()
+	} else {
+		return fmt.Errorf("failed to acquire lock on the root dir; other buildg instance is running?")
+	}
+	cfg.Root = serveRoot
 	return buildkit.Du(ctx, cfg, os.Stdout)
 }
 
@@ -390,29 +450,20 @@ func dapServeAction(clicontext *cli.Context) error {
 	}
 
 	// Determine root dir to use
-	rootDir = filepath.Join(rootDir, "dap") // use a dedicated root dir for dap as of now; TODO: share cache globally
-	serveRoot := filepath.Join(rootDir, "buildg")
+	rootDir, serveRoot := defaultDAPRootDir(rootDir)
 	if err := os.MkdirAll(serveRoot, 0700); err != nil {
 		return err
 	}
-	f, err := os.Create(filepath.Join(serveRoot, "lock"))
-	if err != nil {
-		return err
-	}
-	defer f.Close()
 	var cleanupFunc func() error
 	var cleanupAll bool
-	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err == nil {
-		logrus.Debugf("acquired lock on the root dir %q", serveRoot)
-		cleanupFunc = func() error {
-			return syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
-		}
+	ok, unlock, err := tryLockOnBuildKitRootDir(serveRoot)
+	if err != nil {
+		return err
+	} else if ok {
+		cleanupFunc = unlock
 	} else {
-		if err != syscall.EWOULDBLOCK {
-			return err
-		}
-		logrus.Warnf("failed to acquire lock on the root dir; other buildg dap session is running?; using a temporary dir")
 		// failed to get lock; use temporary root
+		logrus.Warnf("Disabling cache because failed to acquire lock on the root dir %q; other buildg dap session is running?", serveRoot)
 		// NOTE: all previous cache is ignored as of now.
 		// TODO: eliminate this limitation
 		serveRoot, err = os.MkdirTemp(rootDir, "buildg")
@@ -450,20 +501,17 @@ func dapPruneAction(clicontext *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	rootDir = filepath.Join(rootDir, "dap") // use a dedicated root dir for dap as of now; TODO: share cache globally
-	serveRoot := filepath.Join(rootDir, "buildg")
-	f, err := os.Create(filepath.Join(serveRoot, "lock"))
-	if err != nil {
+	_, serveRoot := defaultDAPRootDir(rootDir)
+	if err := os.MkdirAll(serveRoot, 0700); err != nil {
 		return err
 	}
-	defer f.Close()
-	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err == nil {
-		logrus.Debugf("acquired lock on the root dir %q", serveRoot)
-		defer syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
-	} else if err == syscall.EWOULDBLOCK {
-		return fmt.Errorf("failed to acquire lock on the root dir; other buildg dap session is running?")
-	} else {
+	ok, unlock, err := tryLockOnBuildKitRootDir(serveRoot)
+	if err != nil {
 		return err
+	} else if ok {
+		defer unlock()
+	} else {
+		return fmt.Errorf("failed to acquire lock on the root dir; other buildg dap session is running?")
 	}
 	cfg.Root = serveRoot
 	return buildkit.Prune(context.TODO(), cfg, clicontext.Bool("all"), os.Stdout)
@@ -474,20 +522,17 @@ func dapDuAction(clicontext *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	rootDir = filepath.Join(rootDir, "dap") // use a dedicated root dir for dap as of now; TODO: share cache globally
-	serveRoot := filepath.Join(rootDir, "buildg")
-	f, err := os.Create(filepath.Join(serveRoot, "lock"))
-	if err != nil {
+	_, serveRoot := defaultDAPRootDir(rootDir)
+	if err := os.MkdirAll(serveRoot, 0700); err != nil {
 		return err
 	}
-	defer f.Close()
-	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err == nil {
-		logrus.Debugf("acquired lock on the root dir %q", serveRoot)
-		defer syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
-	} else if err == syscall.EWOULDBLOCK {
-		return fmt.Errorf("failed to acquire lock on the root dir; other buildg dap session is running?")
-	} else {
+	ok, unlock, err := tryLockOnBuildKitRootDir(serveRoot)
+	if err != nil {
 		return err
+	} else if ok {
+		defer unlock()
+	} else {
+		return fmt.Errorf("failed to acquire lock on the root dir; other buildg dap session is running?")
 	}
 	cfg.Root = serveRoot
 	return buildkit.Du(context.TODO(), cfg, os.Stdout)
@@ -513,35 +558,6 @@ func parseGlobalWorkerConfig(clicontext *cli.Context) (cfg *config.Config, rootD
 		}
 	}
 	return cfg, rootDir, nil
-}
-
-func parseWorkerConfig(clicontext *cli.Context) (*config.Config, func(), error) {
-	cfg, rootDir, err := parseGlobalWorkerConfig(clicontext)
-	if err != nil {
-		return nil, nil, err
-	}
-	var serveRoot string
-	if clicontext.Bool("cache-reuse") {
-		// common location for storing caches for reuse.
-		// TODO: multiple concurrent build isn't supported as of now
-		// TODO: make this option true by defaut once we support multiple concurrent build
-		serveRoot = defaultServeRootDir(rootDir)
-	}
-	done := func() {}
-	if serveRoot == "" {
-		tmpServeRoot, err := os.MkdirTemp(rootDir, "buildg")
-		if err != nil {
-			return nil, nil, err
-		}
-		done = func() {
-			if err := os.RemoveAll(tmpServeRoot); err != nil {
-				logrus.WithError(err).Warnf("failed to cleanup %q", serveRoot)
-			}
-		}
-		serveRoot = tmpServeRoot
-	}
-	cfg.Root = serveRoot
-	return cfg, done, nil
 }
 
 // TODO:
@@ -630,6 +646,11 @@ func defaultServeRootDir(rootDir string) string {
 	return filepath.Join(rootDir, "data")
 }
 
+func defaultDAPRootDir(rootDir string) (dapRootDir string, dapServeRoot string) {
+	dapRootDir = filepath.Join(rootDir, "dap") // use a dedicated root dir for dap as of now; TODO: share cache globally
+	return dapRootDir, filepath.Join(dapRootDir, "buildg")
+}
+
 func rootDataDir(rootless bool) (string, error) {
 	if !rootless {
 		return "/var/lib/buildg", nil
@@ -642,6 +663,34 @@ func rootDataDir(rootless bool) (string, error) {
 		return "", fmt.Errorf("environment variable HOME is not set")
 	}
 	return filepath.Join(home, ".local/share/buildg"), nil
+}
+
+func tryLockOnBuildKitRootDir(dir string) (ok bool, unlock func() error, retErr error) {
+	f, err := os.Create(filepath.Join(dir, "lock"))
+	if err != nil {
+		return false, nil, err
+	}
+	defer func() {
+		if !ok || retErr != nil {
+			f.Close()
+		}
+	}()
+	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err == nil {
+		logrus.Debugf("acquired lock on the root dir %q", dir)
+		return true, func() (err error) {
+			if uErr := syscall.Flock(int(f.Fd()), syscall.LOCK_UN); uErr != nil {
+				err = uErr
+			}
+			if cErr := f.Close(); cErr != nil {
+				err = cErr
+			}
+			return err
+		}, nil
+	} else if err == syscall.EWOULDBLOCK {
+		return false, func() error { return nil }, nil
+	} else {
+		return false, nil, err
+	}
 }
 
 type stdioConn struct {

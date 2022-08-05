@@ -19,7 +19,7 @@ RUN echo -n d > /d`, testutil.Mirror("busybox:1.32.0"))
 	defer doneTmpCtx()
 
 	sh := testutil.NewDebugShell(t, tmpCtx)
-	defer sh.Close()
+	defer sh.Close(t)
 	sh.Do("b 3")     // breakpoint 0
 	sh.Do("break 4") // breakpoint 1
 	sh.Do("breakpoints").OutContains("line: Dockerfile:3").OutContains("line: Dockerfile:4")
@@ -58,7 +58,7 @@ RUN echo -n c > /c`, testutil.Mirror("busybox:1.32.0"), testutil.Mirror("alpine:
 	defer doneTmpCtx()
 
 	sh := testutil.NewDebugShell(t, tmpCtx)
-	defer sh.Close()
+	defer sh.Close(t)
 	sh.Do("break 6")
 	sh.Do("breakpoints").OutContains("line: Dockerfile:6")
 
@@ -85,7 +85,7 @@ RUN echo -n b > /b`, testutil.Mirror("busybox:1.32.0"))
 	defer doneTmpCtx()
 
 	sh := testutil.NewDebugShell(t, tmpCtx)
-	defer sh.Close()
+	defer sh.Close(t)
 	sh.Do("n")
 
 	sh.Do(execNoTTY("cat /a")).OutEqual("a")
@@ -111,7 +111,7 @@ RUN cat /dummy`, testutil.Mirror("busybox:1.32.0"))
 	defer doneTmpCtx()
 
 	sh := testutil.NewDebugShell(t, tmpCtx)
-	defer sh.Close()
+	defer sh.Close(t)
 	sh.Do("breakpoints").OutContains("on-fail")
 
 	sh.Do("next")
@@ -137,7 +137,7 @@ RUN echo -n b > /b`, testutil.Mirror("busybox:1.32.0"))
 	defer doneTmpCtx()
 
 	sh := testutil.NewDebugShell(t, tmpCtx)
-	defer sh.Close()
+	defer sh.Close(t)
 	sh.Do("n")
 	sh.Do(execNoTTY("cat /a")).OutEqual("a")
 	sh.Do(execNoTTY("cat /b")).OutContains("process execution failed")

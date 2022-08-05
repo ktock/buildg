@@ -27,10 +27,8 @@ RUN date > /
 	}
 	defer os.RemoveAll(tmpRoot)
 
-	sh := testutil.NewDebugShell(t, tmpCtx,
-		testutil.WithGlobalOptions("--root="+tmpRoot),
-		testutil.WithOptions("--cache-reuse"))
-	defer sh.Close()
+	sh := testutil.NewDebugShell(t, tmpCtx, testutil.WithRootDir(tmpRoot))
+	defer sh.Close(t)
 	sh.Do("next")
 	a := nonEmpty(t, sh.Do(execNoTTY("cat /a")).Out())
 	sh.Do("next")
@@ -43,10 +41,8 @@ RUN date > /
 		t.Fatal(fmt.Errorf("must fail"))
 	}
 
-	sh2 := testutil.NewDebugShell(t, tmpCtx,
-		testutil.WithGlobalOptions("--root="+tmpRoot),
-		testutil.WithOptions("--cache-reuse"))
-	defer sh2.Close()
+	sh2 := testutil.NewDebugShell(t, tmpCtx, testutil.WithRootDir(tmpRoot))
+	defer sh2.Close(t)
 	sh2.Do("next")
 	sh2.Do(execNoTTY("cat /a")).OutEqual(a)
 	sh2.Do("next")
@@ -65,10 +61,8 @@ RUN date > /b
 RUN date > /ok
 `, testutil.Mirror("busybox:1.32.0")))
 	defer doneTmpOKCtx()
-	shOK := testutil.NewDebugShell(t, tmpOKCtx,
-		testutil.WithGlobalOptions("--root="+tmpRoot),
-		testutil.WithOptions("--cache-reuse"))
-	defer shOK.Close()
+	shOK := testutil.NewDebugShell(t, tmpOKCtx, testutil.WithRootDir(tmpRoot))
+	defer shOK.Close(t)
 	shOK.Do("next")
 	shOK.Do(execNoTTY("cat /a")).OutEqual(a)
 	shOK.Do("next")
@@ -93,10 +87,8 @@ RUN date > /ok
 	if !strings.Contains(string(duOut), zeroOut) {
 		t.Fatalf("du must contain %q; got %q", zeroOut, string(duOut))
 	}
-	shPrune := testutil.NewDebugShell(t, tmpOKCtx,
-		testutil.WithGlobalOptions("--root="+tmpRoot),
-		testutil.WithOptions("--cache-reuse"))
-	defer shPrune.Close()
+	shPrune := testutil.NewDebugShell(t, tmpOKCtx, testutil.WithRootDir(tmpRoot))
+	defer shPrune.Close(t)
 	shPrune.Do("next")
 	shPrune.Do(execNoTTY("cat /a")).OutNotEqual(a)
 	shPrune.Do("next")
@@ -108,6 +100,55 @@ RUN date > /ok
 	shPrune.Do("next")
 	if err := shPrune.Wait(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestNoCacheReuse(t *testing.T) {
+	t.Parallel()
+	tmpCtx, doneTmpCtx := testutil.NewTempContext(t, fmt.Sprintf(`FROM %s
+RUN date > /a
+RUN date > /b
+RUN date > /
+`, testutil.Mirror("busybox:1.32.0")))
+	defer doneTmpCtx()
+
+	tmpRoot, err := os.MkdirTemp(os.Getenv(testutil.BuildgTestTmpDirEnv), "buildg-test-tmproot")
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	defer os.RemoveAll(tmpRoot)
+
+	sh := testutil.NewDebugShell(t, tmpCtx,
+		testutil.WithRootDir(tmpRoot),
+		testutil.WithOptions("--cache-reuse=false"))
+	defer sh.Close(t)
+	sh.Do("next")
+	a := nonEmpty(t, sh.Do(execNoTTY("cat /a")).Out())
+	sh.Do("next")
+	b := nonEmpty(t, sh.Do(execNoTTY("cat /b")).Out())
+	sh.Do("next")
+	a2 := nonEmpty(t, sh.Do(execNoTTY("cat /a")).Out())
+	b2 := nonEmpty(t, sh.Do(execNoTTY("cat /b")).Out())
+	sh.Do("next")
+	if err := sh.Wait(); err == nil {
+		t.Fatal(fmt.Errorf("must fail"))
+	}
+
+	sh2 := testutil.NewDebugShell(t, tmpCtx,
+		testutil.WithRootDir(tmpRoot),
+		testutil.WithOptions("--cache-reuse=false"))
+	defer sh2.Close(t)
+	sh2.Do("next")
+	sh2.Do(execNoTTY("cat /a")).OutNotEqual(a)
+	sh2.Do("next")
+	sh2.Do(execNoTTY("cat /b")).OutNotEqual(b)
+	sh2.Do("next")
+	sh2.Do(execNoTTY("cat /a")).OutNotEqual(a2)
+	sh2.Do(execNoTTY("cat /b")).OutNotEqual(b2)
+	sh2.Do("next")
+	if err := sh2.Wait(); err == nil {
+		t.Fatal(fmt.Errorf("must fail"))
 	}
 }
 
@@ -129,10 +170,8 @@ RUN cat /b
 	}
 	defer os.RemoveAll(tmpRoot)
 
-	sh := testutil.NewDebugShell(t, tmpCtx,
-		testutil.WithGlobalOptions("--root="+tmpRoot),
-		testutil.WithOptions("--cache-reuse"))
-	defer sh.Close()
+	sh := testutil.NewDebugShell(t, tmpCtx, testutil.WithRootDir(tmpRoot))
+	defer sh.Close(t)
 	sh.Do("next")
 	a := nonEmpty(t, sh.Do(execNoTTY("cat /a")).Out())
 	sh.Do("next")
@@ -150,10 +189,8 @@ RUN cat /b
 		t.Fatalf("wanted %q; got %q", b, b2)
 	}
 
-	sh2 := testutil.NewDebugShell(t, tmpCtx,
-		testutil.WithGlobalOptions("--root="+tmpRoot),
-		testutil.WithOptions("--cache-reuse"))
-	defer sh2.Close()
+	sh2 := testutil.NewDebugShell(t, tmpCtx, testutil.WithRootDir(tmpRoot))
+	defer sh2.Close(t)
 	sh2.Do("next")
 	sh2.Do(execNoTTY("cat /a")).OutEqual(a)
 	sh2.Do("next")
@@ -181,12 +218,9 @@ RUN date > /a
 	defer os.RemoveAll(tmpRoot)
 
 	sh := testutil.NewDebugShell(t, tmpCtx,
-		testutil.WithGlobalOptions("--root="+tmpRoot),
-		testutil.WithOptions(
-			"--cache-reuse",
-			"--image="+testutil.Mirror("ubuntu:20.04"),
-		))
-	defer sh.Close()
+		testutil.WithRootDir(tmpRoot),
+		testutil.WithOptions("--image="+testutil.Mirror("ubuntu:20.04")))
+	defer sh.Close(t)
 	sh.Do("next")
 	a := nonEmpty(t, sh.Do(execNoTTY("cat /a")).Out())
 	a2 := nonEmpty(t, sh.Do(execNoTTY("--image cat /debugroot/a")).Out())
@@ -196,12 +230,9 @@ RUN date > /a
 	}
 
 	sh2 := testutil.NewDebugShell(t, tmpCtx,
-		testutil.WithGlobalOptions("--root="+tmpRoot),
-		testutil.WithOptions(
-			"--cache-reuse",
-			"--image="+testutil.Mirror("ubuntu:20.04"),
-		))
-	defer sh2.Close()
+		testutil.WithRootDir(tmpRoot),
+		testutil.WithOptions("--image="+testutil.Mirror("ubuntu:20.04")))
+	defer sh2.Close(t)
 	sh2.Do("next")
 	sh2.Do(execNoTTY("cat /a")).OutEqual(a)
 	sh2.Do(execNoTTY("--image cat /debugroot/a")).OutEqual(a2)
@@ -241,10 +272,8 @@ RUN --mount=type=bind,target=/root/mnt cat /root/mnt/data/hi > /a && date > /b
 	}
 	defer os.RemoveAll(tmpRoot)
 
-	sh := testutil.NewDebugShell(t, tmpCtx,
-		testutil.WithGlobalOptions("--root="+tmpRoot),
-		testutil.WithOptions("--cache-reuse"))
-	defer sh.Close()
+	sh := testutil.NewDebugShell(t, tmpCtx, testutil.WithRootDir(tmpRoot))
+	defer sh.Close(t)
 	sh.Do("next")
 	sh.Do(execNoTTY("cat /a")).OutEqual(sampleStr)
 	b := nonEmpty(t, sh.Do(execNoTTY("cat /b")).Out())
@@ -253,10 +282,8 @@ RUN --mount=type=bind,target=/root/mnt cat /root/mnt/data/hi > /a && date > /b
 		t.Fatal(err)
 	}
 
-	sh2 := testutil.NewDebugShell(t, tmpCtx,
-		testutil.WithGlobalOptions("--root="+tmpRoot),
-		testutil.WithOptions("--cache-reuse"))
-	defer sh2.Close()
+	sh2 := testutil.NewDebugShell(t, tmpCtx, testutil.WithRootDir(tmpRoot))
+	defer sh2.Close(t)
 	sh2.Do("next")
 	sh2.Do(execNoTTY("cat /a")).OutEqual(sampleStr)
 	sh2.Do(execNoTTY("cat /b")).OutEqual(b)
@@ -286,10 +313,8 @@ RUN date > /ok
 	}
 	defer os.RemoveAll(tmpRoot)
 
-	sh := testutil.NewDebugShell(t, tmpCtx,
-		testutil.WithGlobalOptions("--root="+tmpRoot),
-		testutil.WithOptions("--cache-reuse"))
-	defer sh.Close()
+	sh := testutil.NewDebugShell(t, tmpCtx, testutil.WithRootDir(tmpRoot))
+	defer sh.Close(t)
 	sh.Do("next")
 	a := nonEmpty(t, sh.Do(execNoTTY("cat /a")).Out())
 	sh.Do("next")
@@ -305,10 +330,8 @@ RUN date > /ok
 		t.Fatal(err)
 	}
 
-	sh2 := testutil.NewDebugShell(t, tmpCtx,
-		testutil.WithGlobalOptions("--root="+tmpRoot),
-		testutil.WithOptions("--cache-reuse"))
-	defer sh2.Close()
+	sh2 := testutil.NewDebugShell(t, tmpCtx, testutil.WithRootDir(tmpRoot))
+	defer sh2.Close(t)
 	sh2.Do("next")
 	sh2.Do(execNoTTY("cat /a")).OutEqual(a)
 	sh2.Do("next")

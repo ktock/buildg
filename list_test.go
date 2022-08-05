@@ -18,7 +18,7 @@ RUN echo c > /c`, testutil.Mirror("busybox:1.32.0"))
 	defer doneTmpCtx()
 
 	sh := testutil.NewDebugShell(t, tmpCtx)
-	defer sh.Close()
+	defer sh.Close(t)
 	sh.Do("ls").OutEqual(fmt.Sprintf(`Filename: "Dockerfile"
  =>   1| FROM %s
       2| RUN echo a > /a
@@ -76,7 +76,7 @@ RUN echo l
 	defer doneTmpCtx()
 
 	sh := testutil.NewDebugShell(t, tmpCtx)
-	defer sh.Close()
+	defer sh.Close(t)
 	sh.Do("ls").OutEqual(fmt.Sprintf(`Filename: "Dockerfile"
  =>   1| FROM %s
       2| RUN echo a
