@@ -178,13 +178,13 @@ You can also use [bake command by Docker Buildx](https://docs.docker.com/engine/
 docker buildx bake --set image-local.tags=buildg
 ```
 
-> Tip: `--cache-reuse` experimental option + the volume at the buildg root enables to reuse cache among invocations and can speed up 2nd-time debugging.
+> Tip: the volume at the buildg root enables to reuse cache among invocations and can speed up 2nd-time debugging.
 > 
 > ```
 > docker run --rm -it --privileged \
 >   -v buildg-cache:/var/lib/buildg \
 >   -v /path/to/ctx:/ctx:ro \
->   buildg debug --cache-reuse /ctx
+>   buildg debug /ctx
 > ```
 
 ## Motivation
@@ -244,7 +244,7 @@ Flags:
 - `--secret value` : Secret value exposed to the build. Format: `id=secretname,src=filepath`
 - `--ssh value` : Allow forwarding SSH agent to the build. Format: `default|<id>[=<socket>|<key>[,<key>]]`
 - `--cache-from value`: Import build cache from the specified location. e.g. `user/app:cache`, `type=local,src=path/to/dir` (see [`./docs/cache-from.md`](./docs/cache-from.md))
-- `--cache-reuse` : Reuse locally cached previous results (experimental).
+- `--cache-reuse` : Reuse locally cached previous results (enabled by default).
 
 ## buildg prune
 
