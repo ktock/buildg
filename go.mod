@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/containerd/console v1.0.3
-	github.com/containerd/containerd v1.6.6
+	github.com/containerd/containerd v1.6.7
 	github.com/containerd/fifo v1.0.0
 	github.com/google/go-dap v0.6.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
@@ -21,7 +21,7 @@ require (
 
 require (
 	github.com/Microsoft/go-winio v0.5.2 // indirect
-	github.com/Microsoft/hcsshim v0.9.3 // indirect
+	github.com/Microsoft/hcsshim v0.9.4 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/armon/circbuf v0.0.0-20190214190532-5111143e8da2 // indirect
 	github.com/containerd/cgroups v1.0.3 // indirect
