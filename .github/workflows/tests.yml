@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     name: Build
     steps:
     - uses: actions/setup-go@v3
@@ -21,7 +21,7 @@ jobs:
         if ldd ./out/buildg ; then echo "buildg must be static binary" ; exit 1 ; fi
 
   test:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     name: Test
     strategy:
       fail-fast: false
@@ -55,7 +55,7 @@ jobs:
         fi
 
   linter:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     name: Linter
     steps:
     - uses: actions/checkout@v3
@@ -69,7 +69,7 @@ jobs:
 
   project:
     name: Project Checks
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/setup-go@v3
       with:

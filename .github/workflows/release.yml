@@ -10,7 +10,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     name: Build
     strategy:
       matrix:
@@ -40,7 +40,7 @@ jobs:
         path: ${{ env.OUTPUT_DIR }}/*
 
   release:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     name: Release
     needs: [build]
     env:
@@ -71,7 +71,7 @@ jobs:
         hub release create "${ASSET_FLAGS[@]}" -F ${GITHUB_WORKSPACE}/release-note.txt --draft "${RELEASE_TAG}"
   
   containerize:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     name: Containerize
     steps:
       -

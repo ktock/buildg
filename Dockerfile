@@ -33,7 +33,7 @@ RUN GOARCH=arm64 CC=aarch64-linux-gnu-gcc make static && \
   cp -a runc /out/runc.arm64
 
 # create buildg container
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 ARG TARGETARCH
 RUN apt-get update && apt-get install -y ca-certificates git
 COPY --from=build-buildg /out/buildg /
