@@ -384,7 +384,7 @@ RUN echo -n c > /c`, testutil.Mirror("busybox:1.32.0"))
 	c.start(t, LaunchConfig{
 		Program:     filepath.Join(tmpCtx, "Dockerfile"),
 		StopOnEntry: true,
-		Image:       testutil.Mirror("ubuntu:20.04"),
+		Image:       testutil.Mirror("ubuntu:22.04"),
 	}, []dap.SourceBreakpoint{
 		{
 			Line: 2,
@@ -446,7 +446,7 @@ RUN cat /b
 	c.start(t, LaunchConfig{
 		Program:     filepath.Join(tmpCtx, "Dockerfile"),
 		StopOnEntry: true,
-		Image:       testutil.Mirror("ubuntu:20.04"),
+		Image:       testutil.Mirror("ubuntu:22.04"),
 	}, []dap.SourceBreakpoint{
 		{
 			Line: 2,

@@ -219,7 +219,7 @@ RUN date > /a
 
 	sh := testutil.NewDebugShell(t, tmpCtx,
 		testutil.WithRootDir(tmpRoot),
-		testutil.WithOptions("--image="+testutil.Mirror("ubuntu:20.04")))
+		testutil.WithOptions("--image="+testutil.Mirror("ubuntu:22.04")))
 	defer sh.Close(t)
 	sh.Do("next")
 	a := nonEmpty(t, sh.Do(execNoTTY("cat /a")).Out())
@@ -231,7 +231,7 @@ RUN date > /a
 
 	sh2 := testutil.NewDebugShell(t, tmpCtx,
 		testutil.WithRootDir(tmpRoot),
-		testutil.WithOptions("--image="+testutil.Mirror("ubuntu:20.04")))
+		testutil.WithOptions("--image="+testutil.Mirror("ubuntu:22.04")))
 	defer sh2.Close(t)
 	sh2.Do("next")
 	sh2.Do(execNoTTY("cat /a")).OutEqual(a)
