@@ -1,6 +1,6 @@
 # syntax = docker/dockerfile:1.4.0
 
-ARG GO_VERSION=1.18
+ARG GO_VERSION=1.19
 ARG RUNC_VERSION=v1.1.3
 
 # build buildg
