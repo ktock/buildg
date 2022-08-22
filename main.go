@@ -15,6 +15,7 @@ import (
 
 	"github.com/containerd/console"
 	"github.com/containerd/containerd/pkg/userns"
+	dockerconfig "github.com/docker/cli/cli/config"
 	"github.com/ktock/buildg/pkg/buildkit"
 	"github.com/ktock/buildg/pkg/dap"
 	"github.com/ktock/buildg/pkg/version"
@@ -599,7 +600,7 @@ func parseSolveOpt(clicontext *cli.Context) (*client.SolveOpt, error) {
 	if err != nil {
 		return nil, err
 	}
-	attachable := []session.Attachable{authprovider.NewDockerAuthProvider(os.Stderr)}
+	attachable := []session.Attachable{authprovider.NewDockerAuthProvider(dockerconfig.LoadDefaultConfigFile(os.Stderr))}
 	if ssh := clicontext.StringSlice("ssh"); len(ssh) > 0 {
 		configs, err := build.ParseSSH(ssh)
 		if err != nil {

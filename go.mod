@@ -6,6 +6,7 @@ require (
 	github.com/containerd/console v1.0.3
 	github.com/containerd/containerd v1.6.8
 	github.com/containerd/fifo v1.0.0
+	github.com/docker/cli v20.10.17+incompatible
 	github.com/google/go-dap v0.6.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/moby/buildkit v0.0.0-00010101000000-000000000000
@@ -20,6 +21,7 @@ require (
 )
 
 require (
+	cloud.google.com/go v0.81.0 // indirect
 	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/Microsoft/hcsshim v0.9.4 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
@@ -28,13 +30,11 @@ require (
 	github.com/containerd/continuity v0.3.0 // indirect
 	github.com/containerd/go-cni v1.1.6 // indirect
 	github.com/containerd/go-runc v1.0.0 // indirect
-	github.com/containerd/stargz-snapshotter v0.11.4 // indirect
-	github.com/containerd/stargz-snapshotter/estargz v0.11.4 // indirect
+	github.com/containerd/stargz-snapshotter/estargz v0.12.0 // indirect
 	github.com/containerd/ttrpc v1.1.0 // indirect
 	github.com/containerd/typeurl v1.0.2 // indirect
 	github.com/containernetworking/cni v1.1.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
-	github.com/docker/cli v20.10.14+incompatible // indirect
 	github.com/docker/distribution v2.8.1+incompatible // indirect
 	github.com/docker/docker v20.10.7+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.6.4 // indirect
@@ -53,15 +53,16 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
+	github.com/hashicorp/go-uuid v1.0.1 // indirect
 	github.com/hashicorp/golang-lru v0.5.3 // indirect
-	github.com/klauspost/compress v1.15.1 // indirect
+	github.com/klauspost/compress v1.15.7 // indirect
 	github.com/mitchellh/hashstructure/v2 v2.0.2 // indirect
 	github.com/moby/locker v1.0.1 // indirect
 	github.com/moby/sys/mount v0.3.0 // indirect
-	github.com/moby/sys/mountinfo v0.6.0 // indirect
+	github.com/moby/sys/mountinfo v0.6.2 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.3-0.20211202183452-c5a74bcca799 // indirect
-	github.com/opencontainers/runc v1.1.2 // indirect
+	github.com/opencontainers/runc v1.1.3 // indirect
 	github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417 // indirect
 	github.com/opencontainers/selinux v1.10.1 // indirect
 	github.com/pelletier/go-toml v1.9.4 // indirect
@@ -85,14 +86,16 @@ require (
 	go.opentelemetry.io/otel/trace v1.4.1 // indirect
 	go.opentelemetry.io/proto/otlp v0.12.0 // indirect
 	golang.org/x/net v0.0.0-20220425223048-2871e0cb64e4 // indirect
+	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
 	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
 	golang.org/x/text v0.3.7 // indirect
-	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
-	google.golang.org/genproto v0.0.0-20220107163113-42d7afdf6368 // indirect
+	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
+	google.golang.org/genproto v0.0.0-20220310185008-1973136f34c6 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
+	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
 
 replace (
 	github.com/docker/docker => github.com/docker/docker v20.10.3-0.20220414164044-61404de7df1a+incompatible
-	github.com/moby/buildkit => github.com/ktock/buildkit v0.6.2-0.20220628004512-0a3180ac4985
+	github.com/moby/buildkit => github.com/ktock/buildkit v0.6.2-0.20220822084326-f042d57f63ce
 )

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	dockerconfig "github.com/docker/cli/cli/config"
 	"github.com/ktock/buildg/pkg/buildkit"
 	"github.com/moby/buildkit/client"
 	"github.com/moby/buildkit/cmd/buildctl/build"
@@ -117,7 +118,7 @@ func parseDAPSolveOpt(cfg LaunchConfig) (*client.SolveOpt, error) {
 	if err != nil {
 		return nil, err
 	}
-	attachable := []session.Attachable{authprovider.NewDockerAuthProvider(os.Stderr)}
+	attachable := []session.Attachable{authprovider.NewDockerAuthProvider(dockerconfig.LoadDefaultConfigFile(os.Stderr))}
 	if ssh := cfg.SSH; len(ssh) > 0 {
 		configs, err := build.ParseSSH(ssh)
 		if err != nil {
