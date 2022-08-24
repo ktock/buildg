@@ -232,91 +232,15 @@ func newDapDuCommand() cli.Command {
 	}
 }
 
-// TODO: avoid global var
-var globalSignalHandler *signalHandler
-
-type signalHandler struct {
-	handler func(sig os.Signal) error
-	enabled bool
-	mu      sync.Mutex
-}
-
-func (h *signalHandler) disable() {
-	h.mu.Lock()
-	h.enabled = false
-	h.mu.Unlock()
-}
-
-func (h *signalHandler) enable() {
-	h.mu.Lock()
-	h.enabled = true
-	h.mu.Unlock()
-}
-
-func (h *signalHandler) start() {
-	h.enable()
-	ch := make(chan os.Signal, 1)
-	signals := []os.Signal{os.Interrupt}
-	signal.Notify(ch, signals...)
-	go func() {
-		for {
-			ss := <-ch
-			h.mu.Lock()
-			enabled := h.enabled
-			h.mu.Unlock()
-			if !enabled {
-				continue
-			}
-			h.handler(ss)
-		}
-	}()
-}
-
-// TODO: avoid global var
-var globalProgressWriter = &progressWriter{File: os.Stderr, enabled: true}
-
-type progressWriter struct {
-	console.File
-	enabled bool
-	buf     []byte
-	mu      sync.Mutex
-}
-
-func (w *progressWriter) disable() {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	w.enabled = false
-}
-
-func (w *progressWriter) enable() {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	w.enabled = true
-	if len(w.buf) > 0 {
-		w.File.Write(w.buf)
-		w.buf = nil
-	}
-}
-
-func (w *progressWriter) Write(p []byte) (int, error) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	if !w.enabled {
-		w.buf = append(w.buf, p...) // TODO: add limit
-		return len(p), nil
-	}
-	return w.File.Write(p)
-}
-
 func debugAction(clicontext *cli.Context) error {
 	ctx, ctxCancel := context.WithCancel(context.Background())
-	globalSignalHandler = &signalHandler{
+	sigHandler := &signalHandler{
 		handler: func(sig os.Signal) error {
 			ctxCancel()
 			return nil
 		},
 	}
-	globalSignalHandler.start()
+	sigHandler.start()
 
 	// Parse build options
 	solveOpt, err := parseSolveOpt(clicontext)
@@ -369,23 +293,29 @@ func debugAction(clicontext *cli.Context) error {
 
 	r := newSharedReader(os.Stdin)
 	defer r.close()
-	return buildkit.Debug(ctx, cfg, solveOpt, globalProgressWriter, buildkit.DebugConfig{
-		BreakpointHandler: newCommandHandler(r, os.Stdout).breakHandler,
-		DebugImage:        clicontext.String("image"),
-		StopOnEntry:       true,
-		CleanupAll:        cleanupAll,
+	progressWriter := &progressWriter{File: os.Stderr, enabled: true}
+	h := newCommandHandler(r, os.Stdout, sigHandler)
+	return buildkit.Debug(ctx, cfg, solveOpt, progressWriter, buildkit.DebugConfig{
+		BreakpointHandler: func(ctx context.Context, bCtx buildkit.BreakContext) error {
+			progressWriter.disable()
+			defer progressWriter.enable()
+			return h.breakHandler(ctx, bCtx)
+		},
+		DebugImage:  clicontext.String("image"),
+		StopOnEntry: true,
+		CleanupAll:  cleanupAll,
 	})
 }
 
 func pruneAction(clicontext *cli.Context) error {
 	ctx, ctxCancel := context.WithCancel(context.Background())
-	globalSignalHandler = &signalHandler{
+	sigHandler := &signalHandler{
 		handler: func(sig os.Signal) error {
 			ctxCancel()
 			return nil
 		},
 	}
-	globalSignalHandler.start()
+	sigHandler.start()
 
 	// Parse config options
 	cfg, rootDir, err := parseGlobalWorkerConfig(clicontext)
@@ -410,13 +340,13 @@ func pruneAction(clicontext *cli.Context) error {
 
 func duAction(clicontext *cli.Context) error {
 	ctx, ctxCancel := context.WithCancel(context.Background())
-	globalSignalHandler = &signalHandler{
+	sigHandler := &signalHandler{
 		handler: func(sig os.Signal) error {
 			ctxCancel()
 			return nil
 		},
 	}
-	globalSignalHandler.start()
+	sigHandler.start()
 
 	// Parse config options
 	cfg, rootDir, err := parseGlobalWorkerConfig(clicontext)
@@ -716,3 +646,73 @@ type dummyAddr struct{}
 
 func (a dummyAddr) Network() string { return "dummy" }
 func (a dummyAddr) String() string  { return "dummy" }
+
+type progressWriter struct {
+	console.File
+	enabled bool
+	buf     []byte
+	mu      sync.Mutex
+}
+
+func (w *progressWriter) disable() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.enabled = false
+}
+
+func (w *progressWriter) enable() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.enabled = true
+	if len(w.buf) > 0 {
+		w.File.Write(w.buf)
+		w.buf = nil
+	}
+}
+
+func (w *progressWriter) Write(p []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if !w.enabled {
+		w.buf = append(w.buf, p...) // TODO: add limit
+		return len(p), nil
+	}
+	return w.File.Write(p)
+}
+
+type signalHandler struct {
+	handler func(sig os.Signal) error
+	enabled bool
+	mu      sync.Mutex
+}
+
+func (h *signalHandler) disable() {
+	h.mu.Lock()
+	h.enabled = false
+	h.mu.Unlock()
+}
+
+func (h *signalHandler) enable() {
+	h.mu.Lock()
+	h.enabled = true
+	h.mu.Unlock()
+}
+
+func (h *signalHandler) start() {
+	h.enable()
+	ch := make(chan os.Signal, 1)
+	signals := []os.Signal{os.Interrupt}
+	signal.Notify(ch, signals...)
+	go func() {
+		for {
+			ss := <-ch
+			h.mu.Lock()
+			enabled := h.enabled
+			h.mu.Unlock()
+			if !enabled {
+				continue
+			}
+			h.handler(ss)
+		}
+	}()
+}
