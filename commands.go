@@ -20,13 +20,14 @@ const (
 )
 
 type handlerContext struct {
-	handler      *buildkit.Handler
-	stdin        *sharedReader
-	stdout       io.Writer // TODO: use cli.Context.App.Writer
-	info         *buildkit.RegisteredStatus
-	locs         []*buildkit.Location
-	continueRead bool
-	err          error
+	handler       *buildkit.Handler
+	stdin         *sharedReader
+	stdout        io.Writer // TODO: use cli.Context.App.Writer
+	signalHandler *signalHandler
+	info          *buildkit.RegisteredStatus
+	locs          []*buildkit.Location
+	continueRead  bool
+	err           error
 }
 
 type handlerCommandFn func(ctx context.Context, hCtx *handlerContext) cli.Command
@@ -44,23 +45,21 @@ var handlerCommands = []handlerCommandFn{
 }
 
 type commandHandler struct {
-	stdin  *sharedReader
-	stdout io.Writer
-	prompt string
+	stdin         *sharedReader
+	stdout        io.Writer
+	prompt        string
+	signalHandler *signalHandler
 }
 
-func newCommandHandler(stdin *sharedReader, stdout io.Writer) *commandHandler {
+func newCommandHandler(stdin *sharedReader, stdout io.Writer, sig *signalHandler) *commandHandler {
 	prompt := defaultPrompt
 	if p := os.Getenv(promptEnvKey); p != "" {
 		prompt = p
 	}
-	return &commandHandler{stdin, stdout, prompt}
+	return &commandHandler{stdin, stdout, prompt, sig}
 }
 
 func (h *commandHandler) breakHandler(ctx context.Context, bCtx buildkit.BreakContext) error {
-	globalProgressWriter.disable()
-	defer globalProgressWriter.enable()
-
 	for key, bpInfo := range bCtx.Hits {
 		fmt.Fprintf(h.stdout, "Breakpoint[%s]: %s\n", key, bpInfo.Description)
 	}
@@ -127,13 +126,14 @@ func (h *commandHandler) dispatch(ctx context.Context, bCtx buildkit.BreakContex
 	app.ExitErrHandler = func(context *cli.Context, err error) {}
 	app.UseShortOptionHandling = true
 	hCtx := &handlerContext{
-		handler:      bCtx.Handler,
-		stdin:        h.stdin,
-		stdout:       h.stdout,
-		info:         bCtx.Info,
-		locs:         bCtx.Locs,
-		continueRead: true,
-		err:          nil,
+		handler:       bCtx.Handler,
+		stdin:         h.stdin,
+		stdout:        h.stdout,
+		signalHandler: h.signalHandler,
+		info:          bCtx.Info,
+		locs:          bCtx.Locs,
+		continueRead:  true,
+		err:           nil,
 	}
 	for _, fn := range handlerCommands {
 		app.Commands = append(app.Commands, fn(ctx, hCtx))

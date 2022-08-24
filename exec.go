@@ -87,6 +87,8 @@ container execution on non-RUN instruction is experimental.
 			if flagI {
 				cfg.Stdin = io.NopCloser(r)
 			}
+			hCtx.signalHandler.disable() // let the container catch signals
+			defer hCtx.signalHandler.enable()
 			proc, cleanup, err := buildkit.ExecContainer(ctx, cfg)
 			if err != nil {
 				return err
@@ -114,12 +116,10 @@ container execution on non-RUN instruction is experimental.
 }
 
 func watchSignal(ctx context.Context, proc gwclient.ContainerProcess, con console.Console) {
-	globalSignalHandler.disable()
 	ch := make(chan os.Signal, 1)
 	signals := []os.Signal{syscall.SIGWINCH, syscall.SIGINT, syscall.SIGTERM}
 	signal.Notify(ch, signals...)
 	go func() {
-		defer globalSignalHandler.enable()
 		defer signal.Stop(ch)
 		for {
 			select {
