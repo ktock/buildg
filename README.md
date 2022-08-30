@@ -402,7 +402,7 @@ Usage: `help [COMMAND]`
 - `--oci-worker-net value`: Worker network type: "auto", "cni", "host" (default: "auto")
 - `--oci-cni-config-path value`: Path to CNI config file (default: "/etc/buildkit/cni.json")
 - `--oci-cni-binary-path value`: Path to CNI plugin binary dir (default: "/opt/cni/bin")
-- `--rootless`: Enable rootless configuration
+- `--rootlesskit-args`: Change arguments for rootlesskit in JSON format [`BUILDG_ROOTLESSKIT_ARGS`]
 
 # Additional documents
 

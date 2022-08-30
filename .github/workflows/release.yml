@@ -29,7 +29,6 @@ jobs:
         TAR_FILE_NAME="buildg-${RELEASE_TAG}-linux-${{ matrix.arch }}.tar.gz"
         SHA256SUM_FILE_NAME="${TAR_FILE_NAME}.sha256sum"
         PREFIX=$(pwd)/out GOARCH=${{ matrix.arch }} make
-        cp ./extras/buildg.sh ./out/
         tar -C ./out/ -zcvf "${OUTPUT_DIR}/${TAR_FILE_NAME}" .
         cat "${OUTPUT_DIR}/${TAR_FILE_NAME}" | tar -zv --list
         ( cd ${OUTPUT_DIR}; sha256sum ${TAR_FILE_NAME} ) > "${OUTPUT_DIR}/${SHA256SUM_FILE_NAME}"
