@@ -3,10 +3,13 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"net"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"strings"
@@ -34,17 +37,6 @@ func main() {
 	app := cli.NewApp()
 	app.Usage = "Interactive debugger for Dockerfile"
 	var flags []cli.Flag
-	if userns.RunningInUserNS() {
-		flags = append(flags, cli.BoolTFlag{
-			Name:  "rootless",
-			Usage: "Enable rootless configuration (default:true)",
-		})
-	} else {
-		flags = append(flags, cli.BoolFlag{
-			Name:  "rootless",
-			Usage: "Enable rootless configuration",
-		})
-	}
 	app.Flags = append([]cli.Flag{
 		cli.BoolFlag{
 			Name:  "debug",
@@ -74,6 +66,12 @@ func main() {
 			Usage: "Path to CNI plugin binary dir",
 			Value: "/opt/cni/bin",
 		},
+		cli.StringFlag{
+			Name:   "rootlesskit-args",
+			Usage:  "Change arguments for rootlesskit in JSON format",
+			EnvVar: "BUILDG_ROOTLESSKIT_ARGS",
+			Value:  "",
+		},
 	}, flags...)
 	app.Commands = []cli.Command{
 		newDebugCommand(),
@@ -87,12 +85,75 @@ func main() {
 		if context.GlobalBool("debug") {
 			logrus.SetLevel(logrus.DebugLevel)
 		}
+		if os.Geteuid() != 0 {
+			// Running by nonroot user. Enter to the rootless mode.
+			if err := reexecRootless(context); err != nil {
+				fmt.Fprintf(os.Stderr, "failed to run by non-root user: %v\n", err)
+			}
+			os.Exit(1) // shouldn't reach here if reexec succeeds
+		}
+		if userns.RunningInUserNS() && os.Getenv("ROOTLESSKIT_STATE_DIR") != "" && os.Getenv("_BUILDG_ROOTLESSKIT_ENABLED") != "" {
+			// Running in the rootlesskit user namespace created for buildg. Do preparation for this environment.
+			if err := prepareRootlessChild(); err != nil {
+				fmt.Fprintf(os.Stderr, "failed to prepare rootless child: %v\n", err)
+				os.Exit(1)
+			}
+		}
 		return nil
 	}
 	if err := app.Run(os.Args); err != nil {
 		fmt.Fprintf(os.Stderr, "%+v\n", err)
 		os.Exit(1)
 	}
+}
+
+func reexecRootless(context *cli.Context) error {
+	arg0, err := exec.LookPath("rootlesskit")
+	if err != nil {
+		return err
+	}
+	var args []string
+	if argsStr := context.String("rootlesskit-args"); argsStr != "" {
+		if json.Unmarshal([]byte(argsStr), &args); err != nil {
+			return fmt.Errorf("failed to parse \"--rootlesskit-args\": %v", err)
+		}
+	}
+	if len(args) == 0 {
+		args = []string{
+			"--net=slirp4netns",
+			"--copy-up=/etc",
+			"--copy-up=/run",
+			"--disable-host-loopback",
+		}
+	}
+	args = append(args, os.Args...)
+	logrus.Debugf("running rootlesskit with args: %+v", args)
+	// Tell the child process that this is the namespace for buildg
+	env := append(os.Environ(), "_BUILDG_ROOTLESSKIT_ENABLED=1")
+	return syscall.Exec(arg0, args, env)
+}
+
+func prepareRootlessChild() error {
+	// rootlesskit creates the "copied-up" symlink on `/run/runc` which is not accessible
+	// from rootless user. We don't need this because we create runc rootdir for our own usage.
+	runcRoot := "/run/runc"
+	if _, err := os.Lstat(runcRoot); err != nil {
+		if os.IsNotExist(err) {
+			return nil // nothing to do
+		}
+		return err
+	}
+	rInfo, err := os.Lstat(runcRoot)
+	if err != nil {
+		return fmt.Errorf("failed to stat runc root: %v", err)
+	}
+	if mode := rInfo.Mode(); mode&fs.ModeSymlink == 0 {
+		return fmt.Errorf("unexpected runc root file mode: %v", mode)
+	}
+	if err := os.Remove("/run/runc"); err != nil {
+		return err
+	}
+	return nil
 }
 
 func newVersionCommand() cli.Command {
@@ -479,7 +540,7 @@ func dapDuAction(clicontext *cli.Context) error {
 
 func parseGlobalWorkerConfig(clicontext *cli.Context) (cfg *config.Config, rootDir string, err error) {
 	cfg = &config.Config{}
-	cfg.Workers.OCI.Rootless = clicontext.GlobalBool("rootless")
+	cfg.Workers.OCI.Rootless = userns.RunningInUserNS()
 	cfg.Workers.OCI.NetworkConfig = config.NetworkConfig{
 		Mode:          clicontext.GlobalString("oci-worker-net"),
 		CNIConfigPath: clicontext.GlobalString("oci-cni-config-path"),

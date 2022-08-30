@@ -151,10 +151,10 @@ func ExecContainer(ctx context.Context, cfg ContainerConfig) (_ gwclient.Contain
 		cfg.WatchSignal(ioCtx, proc, con)
 	}
 	return proc, func() {
-		logrus.Warnf("cleaning up container exec")
+		logrus.Debugf("cleaning up container exec")
 		for i := len(cleanups) - 1; i >= 0; i-- {
 			cleanups[i]()
 		}
-		logrus.Warnf("finished container exec")
+		logrus.Debugf("finished container exec")
 	}, nil
 }
