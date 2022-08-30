@@ -223,6 +223,7 @@ Leveraging the generic features added through the work, this project implements 
   - [continue](#continue)
   - [exec](#exec)
   - [list](#list)
+  - [log](#log)
   - [exit](#exit)
   - [help](#help)
 - [Global flags](#global-flags)
@@ -378,6 +379,17 @@ Flags:
 - `-A value`: Print the specified number of lines after the current line (default: 3)
 - `-B value`: Print the specified number of lines before the current line (default: 3)
 - `--range value`: Print the specified number of lines before and after the current line (default: 3)
+
+### log
+
+Show build log
+
+Usage: `log [OPTIONS]`
+
+Flags:
+- `-n value`: Print recent n lines (default: 10)
+- `--all`, `-a`: show all lines
+- `--more`: show buffered and unread lines
 
 ### exit
 
