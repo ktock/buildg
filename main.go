@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -293,13 +294,20 @@ func debugAction(clicontext *cli.Context) error {
 
 	r := newSharedReader(os.Stdin)
 	defer r.close()
-	progressWriter := &progressWriter{File: os.Stderr, enabled: true}
+	f, err := os.CreateTemp(serveRoot, "buildg-log")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(f.Name())
+	defer f.Close()
+	logrus.Debugf("log file: %q", f.Name())
+	progressWriter := newProgressWriter(os.Stderr, f)
 	h := newCommandHandler(r, os.Stdout, sigHandler)
 	return buildkit.Debug(ctx, cfg, solveOpt, progressWriter, buildkit.DebugConfig{
 		BreakpointHandler: func(ctx context.Context, bCtx buildkit.BreakContext) error {
 			progressWriter.disable()
 			defer progressWriter.enable()
-			return h.breakHandler(ctx, bCtx)
+			return h.breakHandler(ctx, bCtx, progressWriter)
 		},
 		DebugImage:  clicontext.String("image"),
 		StopOnEntry: true,
@@ -647,11 +655,17 @@ type dummyAddr struct{}
 func (a dummyAddr) Network() string { return "dummy" }
 func (a dummyAddr) String() string  { return "dummy" }
 
+func newProgressWriter(dst console.File, logFile *os.File) *progressWriter {
+	return &progressWriter{File: dst, enabled: true, logFile: logFile, logFilePath: logFile.Name()}
+}
+
 type progressWriter struct {
 	console.File
-	enabled bool
-	buf     []byte
-	mu      sync.Mutex
+	enabled     bool
+	buf         []byte
+	mu          sync.Mutex
+	logFile     *os.File
+	logFilePath string
 }
 
 func (w *progressWriter) disable() {
@@ -670,9 +684,30 @@ func (w *progressWriter) enable() {
 	}
 }
 
+func (w *progressWriter) buffered() io.Reader {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	var buf []byte
+	if len(w.buf) > 0 {
+		buf = w.buf
+	}
+	return bytes.NewReader(buf)
+}
+
+func (w *progressWriter) reader() (io.ReadCloser, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return os.Open(w.logFilePath)
+}
+
 func (w *progressWriter) Write(p []byte) (int, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	if w.logFile != nil {
+		if _, err := w.logFile.Write(p); err != nil {
+			logrus.Debugf("failed to writer log to file: %v", err)
+		}
+	}
 	if !w.enabled {
 		w.buf = append(w.buf, p...) // TODO: add limit
 		return len(p), nil

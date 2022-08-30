@@ -27,6 +27,7 @@ type handlerContext struct {
 	info          *buildkit.RegisteredStatus
 	locs          []*buildkit.Location
 	continueRead  bool
+	progress      *progressWriter
 	err           error
 }
 
@@ -41,6 +42,7 @@ var handlerCommands = []handlerCommandFn{
 	continueCommand,
 	execCommand,
 	listCommand,
+	logCommand,
 	exitCommand,
 }
 
@@ -59,7 +61,7 @@ func newCommandHandler(stdin *sharedReader, stdout io.Writer, sig *signalHandler
 	return &commandHandler{stdin, stdout, prompt, sig}
 }
 
-func (h *commandHandler) breakHandler(ctx context.Context, bCtx buildkit.BreakContext) error {
+func (h *commandHandler) breakHandler(ctx context.Context, bCtx buildkit.BreakContext, progress *progressWriter) error {
 	for key, bpInfo := range bCtx.Hits {
 		fmt.Fprintf(h.stdout, "Breakpoint[%s]: %s\n", key, bpInfo.Description)
 	}
@@ -72,7 +74,7 @@ func (h *commandHandler) breakHandler(ctx context.Context, bCtx buildkit.BreakCo
 		if args, err := shlex.Split(ln); err != nil {
 			logrus.WithError(err).Warnf("failed to parse line")
 		} else if len(args) > 0 {
-			cont, err := h.dispatch(ctx, bCtx, args)
+			cont, err := h.dispatch(ctx, bCtx, args, progress)
 			if err != nil {
 				return err
 			}
@@ -112,7 +114,7 @@ func (h *commandHandler) readLine(ctx context.Context) (string, error) {
 	return ln, scanner.Err()
 }
 
-func (h *commandHandler) dispatch(ctx context.Context, bCtx buildkit.BreakContext, args []string) (continueRead bool, err error) {
+func (h *commandHandler) dispatch(ctx context.Context, bCtx buildkit.BreakContext, args []string, progress *progressWriter) (continueRead bool, err error) {
 	if len(args) == 0 || args[0] == "" {
 		return true, nil // nop
 	}
@@ -133,6 +135,7 @@ func (h *commandHandler) dispatch(ctx context.Context, bCtx buildkit.BreakContex
 		info:          bCtx.Info,
 		locs:          bCtx.Locs,
 		continueRead:  true,
+		progress:      progress,
 		err:           nil,
 	}
 	for _, fn := range handlerCommands {
