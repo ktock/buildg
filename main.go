@@ -36,6 +36,7 @@ import (
 func main() {
 	app := cli.NewApp()
 	app.Usage = "Interactive debugger for Dockerfile"
+	app.Version = version.Version
 	var flags []cli.Flag
 	app.Flags = append([]cli.Flag{
 		cli.BoolFlag{
