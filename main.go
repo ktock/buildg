@@ -365,12 +365,17 @@ func debugAction(clicontext *cli.Context) error {
 	logrus.Debugf("log file: %q", f.Name())
 	progressWriter := newProgressWriter(os.Stderr, f)
 	h := newCommandHandler(r, os.Stdout, sigHandler)
+	bp := buildkit.NewBreakpoints()
+	if _, err := bp.Add("on-fail", buildkit.NewOnFailBreakpoint()); err != nil {
+		return err
+	}
 	return buildkit.Debug(ctx, cfg, solveOpt, progressWriter, buildkit.DebugConfig{
 		BreakpointHandler: func(ctx context.Context, bCtx buildkit.BreakContext) error {
 			progressWriter.disable()
 			defer progressWriter.enable()
 			return h.breakHandler(ctx, bCtx, progressWriter)
 		},
+		Breakpoints: bp,
 		DebugImage:  clicontext.String("image"),
 		StopOnEntry: true,
 		CleanupAll:  cleanupAll,
