@@ -165,11 +165,11 @@ $ nerdctl builder debug /path/to/build/context
 ### Docker
 
 You can run buildg inside Docker.
-Images are available at `ghcr.io/ktock/buildg`.
+Images are available at [`ghcr.io/ktock/buildg`](https://github.com/ktock/buildg/pkgs/container/buildg).
 You need to bind mount the build context to the container.
 
 ```
-$ docker run --rm -it --privileged -v /path/to/ctx:/ctx:ro ghcr.io/ktock/buildg:0.4.0 debug /ctx
+$ docker run --rm -it --privileged -v /path/to/ctx:/ctx:ro ghcr.io/ktock/buildg:0.4 debug /ctx
 ```
 
 You can also build this container image on the buildg repo.
