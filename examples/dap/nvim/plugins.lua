@@ -6,7 +6,7 @@ local dap = require("dap")
 
 dap.adapters.dockerfile = {
   type = 'executable';
-  command = 'buildg.sh';
+  command = 'buildg';
   args = { 'dap', "serve" };
 }
 

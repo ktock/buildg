@@ -8,7 +8,7 @@
 - Source-level inspection
 - Breakpoints and step execution
 - Interactive shell on a step with your own debugigng tools
-- Based on BuildKit (needs unmerged patches)
+- Based on BuildKit (with unmerged patches)
 - Supports rootless
 
 **early stage software** This is implemented based on BuildKit with some unmerged patches. We're planning to upstream them.
@@ -19,7 +19,7 @@
 buildg debug /path/to/build/context
 ```
 
-To use your own image for debugging steps:
+To bring your own image for debugging steps:
 
 ```
 buildg debug --image=debugging-tools /path/to/build/context
@@ -44,21 +44,26 @@ COPY --from=build2 /hi /
 ```
 
 Store this Dockerfile to somewhere (e.g. `/tmp/ctx/Dockerfile`) then run `buildg debug`.
-`buildg.sh` can be used for rootless execution (discussed later).
 
 ```console
-$ buildg.sh debug --image=ubuntu:22.04 /tmp/ctx
-WARN[2022-05-17T09:01:16Z] using host network as the default            
+$ buildg debug --image=ubuntu:22.04 /tmp/ctx
+WARN[2022-09-05T16:43:59+09:00] using host network as the default
 #1 [internal] load build definition from Dockerfile
 #1 transferring dockerfile: 195B done
-#1 DONE 0.1s
+#1 DONE 0.0s
 
 #2 [internal] load .dockerignore
 #2 transferring context: 2B done
-#2 DONE 0.1s
+#2 DONE 0.0s
 
 #3 [internal] load metadata for docker.io/library/busybox:latest
-INFO[2022-05-17T09:01:19Z] debug session started. type "help" for command reference. 
+#3 ...
+
+#4 [auth] library/busybox:pull token for registry-1.docker.io
+#4 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/busybox:latest
+INFO[2022-09-05T16:44:03+09:00] debug session started. type "help" for command reference. 
 Filename: "Dockerfile"
  =>   1| FROM busybox AS build1
       2| RUN echo hello > /hello
@@ -72,12 +77,15 @@ Filename: "Dockerfile"
 [0]: line: Dockerfile:5
 [on-fail]: breaks on fail
 (buildg) continue
-#3 DONE 3.2s
+#3 DONE 3.3s
 
-#4 [build2 1/2] FROM docker.io/library/busybox@sha256:d2b53584f580310186df7a2055ce3ff83cc0df6caacf1e3489bff8cf5d0af5d8
-#4 resolve docker.io/library/busybox@sha256:d2b53584f580310186df7a2055ce3ff83cc0df6caacf1e3489bff8cf5d0af5d8 0.0s done
-#4 sha256:50e8d59317eb665383b2ef4d9434aeaa394dcd6f54b96bb7810fdde583e9c2d1 0B / 772.81kB 0.2s
-#4 sha256:50e8d59317eb665383b2ef4d9434aeaa394dcd6f54b96bb7810fdde583e9c2d1 772.81kB / 772.81kB 0.9s done
+#5 [build2 1/2] FROM docker.io/library/busybox@sha256:20142e89dab967c01765b0aea3be4cec3a5957cc330f061e5503ef6168ae6613
+#5 resolve docker.io/library/busybox@sha256:20142e89dab967c01765b0aea3be4cec3a5957cc330f061e5503ef6168ae6613 0.0s done
+#5 sha256:2c39bef88607fd321a97560db2e2c6d029a30189c98fafb75240db93c26633ad 0B / 773.28kB 0.2s
+#5 sha256:2c39bef88607fd321a97560db2e2c6d029a30189c98fafb75240db93c26633ad 773.28kB / 773.28kB 0.3s done
+#5 extracting sha256:2c39bef88607fd321a97560db2e2c6d029a30189c98fafb75240db93c26633ad 0.0s done
+#5 DONE 14.6s
+INFO[2022-09-05T16:44:18+09:00] detected 127.0.0.53 nameserver, assuming systemd-resolved, so using resolv.conf: /run/systemd/resolve/resolv.conf 
 Breakpoint[0]: reached line: Dockerfile:5
 Filename: "Dockerfile"
       2| RUN echo hello > /hello
@@ -89,10 +97,10 @@ Filename: "Dockerfile"
       8| COPY --from=build1 /hello /
 (buildg) exec --image sh
 # cat /etc/os-release
-PRETTY_NAME="Ubuntu 22.04 LTS"
+PRETTY_NAME="Ubuntu 22.04.1 LTS"
 NAME="Ubuntu"
 VERSION_ID="22.04"
-VERSION="22.04 LTS (Jammy Jellyfish)"
+VERSION="22.04.1 LTS (Jammy Jellyfish)"
 VERSION_CODENAME=jammy
 ID=ubuntu
 ID_LIKE=debian
@@ -120,28 +128,20 @@ See [`./examples/dap/README.md`](./examples/dap/README.md) for usage of DAP.
 
 ## Install
 
-- Requirements
-  - [runc](https://github.com/opencontainers/runc)
-  - [OPTIONAL] [RootlessKit](https://github.com/rootless-containers/rootlesskit) and [slirp4netns](https://github.com/rootless-containers/slirp4netns) for rootless execution
+Binaries are available from https://github.com/ktock/buildg/releases
 
-> NOTE: Native execution is supported only on Linux as of now. On other platforms, please run buildg on Linux VM (e.g. [Lima](https://github.com/lima-vm/lima), etc)
+Requirements:
 
-### Release binaries
+- [runc](https://github.com/opencontainers/runc)
+- [OPTIONAL] [RootlessKit](https://github.com/rootless-containers/rootlesskit) and [slirp4netns](https://github.com/rootless-containers/slirp4netns) for rootless execution
 
-Available from https://github.com/ktock/buildg/releases
+They are included in our release tar `buildg-full-<version>-<os>-<arch>.tar.gz` but not included in `buildg-<version>-<os>-<arch>.tar.gz`.
 
-### Rootless mode
+> NOTE1: Native execution is supported only on Linux as of now. On other platforms, please run buildg on Linux VM (e.g. [Lima](https://github.com/lima-vm/lima), etc)
 
-Install and use [`buildg.sh`](./extras/buildg.sh).
-[RootlessKit](https://github.com/rootless-containers/rootlesskit) and [slirp4netns](https://github.com/rootless-containers/slirp4netns) are needed.
+> NOTE2: [buildg on IDEs (VS Code, Emacs, Neovim, etc.)](./examples/dap/) requires rootless execution
 
-```
-$ buildg.sh debug /path/to/context
-```
-
-> NOTE: [buildg on IDEs (VS Code, Emacs, Neovim, etc.)](./examples/dap/) require this configuration
-
-The doc in BuildKit project for troubleshooting: https://github.com/moby/buildkit/blob/master/docs/rootless.md#troubleshooting
+> NOTE3: For troubleshooting rootless mode, please see also the doc provided by BuildKit: https://github.com/moby/buildkit/blob/master/docs/rootless.md#troubleshooting
 
 ### Building binary using make
 
@@ -165,14 +165,21 @@ $ nerdctl builder debug /path/to/build/context
 ### Docker
 
 You can run buildg inside Docker.
+Images are available at `ghcr.io/ktock/buildg`.
 You need to bind mount the build context to the container.
 
 ```
-docker build -t buildg .
-docker run --rm -it --privileged -v /path/to/ctx:/ctx:ro buildg debug /ctx
+$ docker run --rm -it --privileged -v /path/to/ctx:/ctx:ro ghcr.io/ktock/buildg:0.4.0 debug /ctx
 ```
 
-You can also use [bake command by Docker Buildx](https://docs.docker.com/engine/reference/commandline/buildx_bake/):
+You can also build this container image on the buildg repo.
+
+```
+$ docker build -t buildg .
+$ docker run --rm -it --privileged -v /path/to/ctx:/ctx:ro buildg debug /ctx
+```
+
+You can also use [bake command by Docker Buildx](https://docs.docker.com/engine/reference/commandline/buildx_bake/) to build the container:
 
 ```
 docker buildx bake --set image-local.tags=buildg
@@ -246,7 +253,7 @@ Flags:
 - `--secret value` : Secret value exposed to the build. Format: `id=secretname,src=filepath`
 - `--ssh value` : Allow forwarding SSH agent to the build. Format: `default|<id>[=<socket>|<key>[,<key>]]`
 - `--cache-from value`: Import build cache from the specified location. e.g. `user/app:cache`, `type=local,src=path/to/dir` (see [`./docs/cache-from.md`](./docs/cache-from.md))
-- `--cache-reuse` : Reuse locally cached previous results (enabled by default).
+- `--cache-reuse` : Reuse locally cached previous results (enabled by default). Sharing cache among parallel buildg processes isn't supported as of now.
 
 ## buildg prune
 

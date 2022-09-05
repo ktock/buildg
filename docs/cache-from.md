@@ -53,7 +53,7 @@ Finally, you can load and inspect the build cache using buildg with `--cache-fro
 This allows inspecting steps without running them but leveraging the build cache loaded from the specified location.
 
 ```console
-$ buildg.sh debug --cache-from=ghcr.io/ktock/myimagecache:debug /tmp/buildctx/
+$ buildg debug --cache-from=ghcr.io/ktock/myimagecache:debug /tmp/buildctx/
 WARN[2022-06-03T15:24:03+09:00] using host network as the default            
 #1 [internal] load build definition from Dockerfile
 #1 transferring dockerfile: 319B done

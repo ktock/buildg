@@ -7,7 +7,7 @@
   "Populate CONF with the default arguments."
   (-> conf
     (dap--put-if-absent :program buffer-file-name)
-    (dap--put-if-absent :dap-server-path (list "buildg.sh" "dap" "serve"))))
+    (dap--put-if-absent :dap-server-path (list "buildg" "dap" "serve"))))
 
 (dap-register-debug-template "Dockerfile Debug Configuration"
                              (list :type "dockerfile"

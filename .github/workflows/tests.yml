@@ -27,9 +27,6 @@ jobs:
       fail-fast: false
       matrix:
         mode: ["root", "rootless"]
-    env:
-      ROOTLESSKIT_VERSION: v1.0.1
-      SLIRP4NETNS_VERSION: v1.2.0
     steps:
     - uses: actions/setup-go@v3
       with:
