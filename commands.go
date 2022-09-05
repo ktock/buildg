@@ -20,15 +20,16 @@ const (
 )
 
 type handlerContext struct {
-	handler       *buildkit.Handler
-	stdin         *sharedReader
-	stdout        io.Writer // TODO: use cli.Context.App.Writer
-	signalHandler *signalHandler
-	info          *buildkit.RegisteredStatus
-	locs          []*buildkit.Location
-	continueRead  bool
-	progress      *progressWriter
-	err           error
+	handler          *buildkit.Handler
+	stdin            *sharedReader
+	stdout           io.Writer // TODO: use cli.Context.App.Writer
+	signalHandler    *signalHandler
+	info             *buildkit.RegisteredStatus
+	locs             []*buildkit.Location
+	continueRead     bool
+	progress         *progressWriter
+	targetBreakpoint string
+	err              error
 }
 
 type handlerCommandFn func(ctx context.Context, hCtx *handlerContext) cli.Command
@@ -47,10 +48,11 @@ var handlerCommands = []handlerCommandFn{
 }
 
 type commandHandler struct {
-	stdin         *sharedReader
-	stdout        io.Writer
-	prompt        string
-	signalHandler *signalHandler
+	stdin            *sharedReader
+	stdout           io.Writer
+	prompt           string
+	signalHandler    *signalHandler
+	targetBreakpoint string
 }
 
 func newCommandHandler(stdin *sharedReader, stdout io.Writer, sig *signalHandler) *commandHandler {
@@ -58,13 +60,33 @@ func newCommandHandler(stdin *sharedReader, stdout io.Writer, sig *signalHandler
 	if p := os.Getenv(promptEnvKey); p != "" {
 		prompt = p
 	}
-	return &commandHandler{stdin, stdout, prompt, sig}
+	return &commandHandler{
+		stdin:         stdin,
+		stdout:        stdout,
+		prompt:        prompt,
+		signalHandler: sig,
+	}
 }
 
 func (h *commandHandler) breakHandler(ctx context.Context, bCtx buildkit.BreakContext, progress *progressWriter) error {
 	for key, bpInfo := range bCtx.Hits {
 		fmt.Fprintf(h.stdout, "Breakpoint[%s]: %s\n", key, bpInfo.Description)
 	}
+	if target := h.targetBreakpoint; target != "" {
+		var allKeys []string
+		hit := false
+		for k := range bCtx.Hits {
+			allKeys = append(allKeys, k)
+			if k == target {
+				hit = true
+			}
+		}
+		if !hit {
+			logrus.Infof("ignoring non-target breakpoint %v", allKeys)
+			return nil
+		}
+	}
+	h.targetBreakpoint = "" // hit the breakpoint so reset it.
 	printLines(bCtx.Handler, h.stdout, bCtx.Locs, defaultListRange, defaultListRange, false)
 	for {
 		ln, err := h.readLine(ctx)
@@ -143,6 +165,11 @@ func (h *commandHandler) dispatch(ctx context.Context, bCtx buildkit.BreakContex
 	}
 	if cliErr := app.Run(append([]string{rootCmd}, args...)); cliErr != nil {
 		fmt.Fprintf(h.stdout, "%v\n", cliErr)
+	}
+	if hCtx.targetBreakpoint != "" {
+		// continue target specified. All breaktpoins will be ignored until the build
+		// reaches to this breakpoint.
+		h.targetBreakpoint = hCtx.targetBreakpoint
 	}
 	return hCtx.continueRead, hCtx.err
 }

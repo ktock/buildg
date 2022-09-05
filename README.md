@@ -339,11 +339,14 @@ Usage: `next`
 
 ### continue
 
-Proceed to the next breakpoint
+Proceed to the next or the specified breakpoint
 
 Alias: `c`
 
-Usage: `continue`
+Usage: `continue [BREAKPOINT_KEY]`
+
+Optional arg `BREAKPOINT_KEY` is the key of a breakpoint until which continue the build.
+Use `breakpoints` command to list all registered breakpoints.
 
 ### exec
 
