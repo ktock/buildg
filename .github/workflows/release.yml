@@ -19,7 +19,8 @@ jobs:
     - name: Build
       run: |
         PREFIX=${OUTPUT_DIR} make artifacts
-        ( cd ${OUTPUT_DIR}; sha256sum * ) > "${OUTPUT_DIR}/SHA256SUMS"
+        ( cd ${OUTPUT_DIR}; sha256sum * ) > "${GITHUB_WORKSPACE}/SHA256SUMS"
+        mv "${GITHUB_WORKSPACE}/SHA256SUMS" "${OUTPUT_DIR}/SHA256SUMS"
     - name: Create Release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
