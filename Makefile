@@ -18,4 +18,21 @@ buildg:
 
 install:
 	install -D -m 755 $(PREFIX)/buildg $(CMD_DESTDIR)/bin
-	install -D -m 755 $(CURDIR)/extras/buildg.sh $(CMD_DESTDIR)/bin
+
+artifacts: clean
+	GOOS=linux GOARCH=amd64 make buildg
+	tar -C $(PREFIX) -zcvf $(PREFIX)/buildg-$(VERSION)-linux-amd64.tar.gz buildg
+
+	GOOS=linux GOARCH=arm64 make buildg
+	tar -C $(PREFIX) -zcvf $(PREFIX)/buildg-$(VERSION)-linux-arm64.tar.gz buildg
+
+	DOCKER_BUILDKIT=1 docker build --output type=tar,dest=$(PREFIX)/buildg-full-$(VERSION)-linux-amd64.tar --target out-full --platform amd64 $(CURDIR)
+	gzip -9 $(PREFIX)/buildg-full-$(VERSION)-linux-amd64.tar
+
+	DOCKER_BUILDKIT=1 docker build --output type=tar,dest=$(PREFIX)/buildg-full-$(VERSION)-linux-arm64.tar --target out-full --platform arm64 $(CURDIR)
+	gzip -9 $(PREFIX)/buildg-full-$(VERSION)-linux-arm64.tar
+
+	rm -f $(PREFIX)/buildg
+
+clean:
+	rm -f $(CURDIR)/out/*

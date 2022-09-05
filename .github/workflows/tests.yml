@@ -34,14 +34,11 @@ jobs:
     - uses: actions/setup-go@v3
       with:
         go-version: '1.19.x'
-    - name: Install tools
-      run: |
-        sudo curl -sSL https://github.com/rootless-containers/rootlesskit/releases/download/${{ env.ROOTLESSKIT_VERSION }}/rootlesskit-x86_64.tar.gz | sudo tar Cxzv /usr/local/bin
-        sudo curl -o /usr/local/bin/slirp4netns --fail -L https://github.com/rootless-containers/slirp4netns/releases/download/${{ env.SLIRP4NETNS_VERSION }}/slirp4netns-x86_64
-        sudo chmod +x /usr/local/bin/slirp4netns
     - uses: actions/checkout@v3
-    - name: Build and install binaries
-      run: make && sudo make install
+    - name: Build and install
+      run: |
+        DOCKER_BUILDKIT=1 docker build --output type=tar,dest=${GITHUB_WORKSPACE}/buildg-full.tar --target out-full --platform amd64 .
+        sudo tar -C /usr/local/ -xvf ${GITHUB_WORKSPACE}/buildg-full.tar
     - name: Test
       run: |
         if [ "${{ matrix.mode }}" == "root" ] ; then
