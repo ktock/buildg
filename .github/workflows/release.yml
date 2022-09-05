@@ -26,10 +26,10 @@ jobs:
       run: |
         SHA256SUM_OF_SHA256SUM=$(sha256sum ${OUTPUT_DIR}/SHA256SUMS | cut -d ' ' -f 1)
         RELEASE_TAG="${GITHUB_REF##*/}"
-        MINIMAL_TAR=$(ls -1 out | grep buildg-v | head -1)
-        MINIMAL_TAR_LIST=$(tar --list -vvf out/${MINIMAL_TAR})
-        FULL_TAR=$(ls -1 out | grep buildg-full | head -1)
-        FULL_TAR_LIST=$(tar --list -vvf out/${FULL_TAR})
+        MINIMAL_TAR=$(ls -1 ${OUTPUT_DIR} | grep buildg-v | head -1)
+        MINIMAL_TAR_LIST=$(tar --list -vvf ${OUTPUT_DIR}/${MINIMAL_TAR})
+        FULL_TAR=$(ls -1 ${OUTPUT_DIR} | grep buildg-full | head -1)
+        FULL_TAR_LIST=$(tar --list -vvf ${OUTPUT_DIR}/${FULL_TAR})
         cat <<EOF > ${GITHUB_WORKSPACE}/release-note.txt
         ${RELEASE_TAG}
 
