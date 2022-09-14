@@ -9,7 +9,7 @@ target "_common" {
 }
 
 // Special target: https://github.com/docker/metadata-action#bake-definition
-target "docker-metadata-action" {}
+target "meta-helper" {}
 
 
 group "default" {
@@ -17,7 +17,8 @@ group "default" {
 }
 
 target "image" {
-  inherits = ["_common", "docker-metadata-action"]
+  inherits = ["_common", "meta-helper"]
+    output = ["type=image"]
 }
 
 target "image-local" {
@@ -25,7 +26,7 @@ target "image-local" {
   output = ["type=docker"]
 }
 
-target "image-all" {
+target "image-cross" {
   inherits = ["image"]
   platforms = [
     "linux/amd64",
