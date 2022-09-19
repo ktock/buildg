@@ -63,14 +63,14 @@ WARN[2022-09-05T16:43:59+09:00] using host network as the default
 #4 DONE 0.0s
 
 #3 [internal] load metadata for docker.io/library/busybox:latest
-INFO[2022-09-05T16:44:03+09:00] debug session started. type "help" for command reference. 
+INFO[2022-09-05T16:44:03+09:00] debug session started. type "help" for command reference.
 Filename: "Dockerfile"
  =>   1| FROM busybox AS build1
       2| RUN echo hello > /hello
-      3| 
+      3|
  =>   4| FROM busybox AS build2
       5| RUN echo hi > /hi
-      6| 
+      6|
       7| FROM scratch
 (buildg) break 5
 (buildg) breakpoints
@@ -85,14 +85,14 @@ Filename: "Dockerfile"
 #5 sha256:2c39bef88607fd321a97560db2e2c6d029a30189c98fafb75240db93c26633ad 773.28kB / 773.28kB 0.3s done
 #5 extracting sha256:2c39bef88607fd321a97560db2e2c6d029a30189c98fafb75240db93c26633ad 0.0s done
 #5 DONE 14.6s
-INFO[2022-09-05T16:44:18+09:00] detected 127.0.0.53 nameserver, assuming systemd-resolved, so using resolv.conf: /run/systemd/resolve/resolv.conf 
+INFO[2022-09-05T16:44:18+09:00] detected 127.0.0.53 nameserver, assuming systemd-resolved, so using resolv.conf: /run/systemd/resolve/resolv.conf
 Breakpoint[0]: reached line: Dockerfile:5
 Filename: "Dockerfile"
       2| RUN echo hello > /hello
-      3| 
+      3|
       4| FROM busybox AS build2
 *=>   5| RUN echo hi > /hi
-      6| 
+      6|
       7| FROM scratch
       8| COPY --from=build1 /hello /
 (buildg) exec --image sh
@@ -113,7 +113,7 @@ UBUNTU_CODENAME=jammy
 bin  dev  etc  hi  home  proc  root  tmp  usr  var
 # cat /debugroot/hi
 hi
-# 
+#
 (buildg) quit
 ```
 
@@ -129,6 +129,12 @@ See [`./examples/dap/README.md`](./examples/dap/README.md) for usage of DAP.
 ## Install
 
 Binaries are available from https://github.com/ktock/buildg/releases
+
+### Arch Linux
+
+```
+yay -S buildg-git
+```
 
 Requirements:
 
@@ -186,7 +192,7 @@ docker buildx bake --set image-local.tags=buildg
 ```
 
 > Tip: the volume at the buildg root enables to reuse cache among invocations and can speed up 2nd-time debugging.
-> 
+>
 > ```
 > docker run --rm -it --privileged \
 >   -v buildg-cache:/var/lib/buildg \
@@ -274,12 +280,13 @@ Usage: `buildg du`
 ## buildg dap serve
 
 Serve Debug Adapter Protocol (DAP) via stdio.
-Should be called from editors. 
+Should be called from editors.
 See [`./examples/dap/README.md`](./examples/dap/README.md) for usage of DAP.
 
 Usage: `buildg dap serve [OPTIONS]`
 
 Flags:
+
 - `--log-file value`: Path to the file to output logs
 
 ## buildg dap prune
@@ -398,6 +405,7 @@ Show build log
 Usage: `log [OPTIONS]`
 
 Flags:
+
 - `-n value`: Print recent n lines (default: 10)
 - `--all`, `-a`: show all lines
 - `--more`: show buffered and unread lines
