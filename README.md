@@ -1,5 +1,6 @@
 [[⬇️ **Download]**](https://github.com/ktock/buildg/releases)
 [[📖 **Command reference]**](#command-reference)
+[[🖥 **Use on IDEs]**](#use-on-ides)
 
 # buildg: Interactive debugger for Dockerfile
 
@@ -19,100 +20,78 @@
 buildg debug /path/to/build/context
 ```
 
-To bring your own image for debugging steps:
+The above command starts an interactive debugger session for debugging the Dockerfile in `/path/to/build/context`.
 
-```
-buildg debug --image=debugging-tools /path/to/build/context
-```
-
-For the detailed command refenrece, refer to [Command reference](#command-reference) in the following
+For the detailed command refenrece, refer to [Command reference](#command-reference).
 
 ### Exmaple with terminal
 
 Debug the following Dockerfile:
 
 ```Dockerfile
-FROM busybox AS build1
+FROM ubuntu AS dev
 RUN echo hello > /hello
-
-FROM busybox AS build2
-RUN echo hi > /hi
+RUN echo world > /world
 
 FROM scratch
-COPY --from=build1 /hello /
-COPY --from=build2 /hi /
+COPY --from=dev /hello /
+COPY --from=dev /world /
 ```
 
 Store this Dockerfile to somewhere (e.g. `/tmp/ctx/Dockerfile`) then run `buildg debug`.
 
 ```console
-$ buildg debug --image=ubuntu:22.04 /tmp/ctx
-WARN[2022-09-05T16:43:59+09:00] using host network as the default
-#1 [internal] load build definition from Dockerfile
-#1 transferring dockerfile: 195B done
+$ buildg debug /tmp/ctx
+WARN[2022-09-20T20:11:49+09:00] using host network as the default
+#1 [internal] load .dockerignore
+#1 transferring context: 2B done
 #1 DONE 0.0s
 
-#2 [internal] load .dockerignore
-#2 transferring context: 2B done
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 170B done
 #2 DONE 0.0s
 
-#3 [internal] load metadata for docker.io/library/busybox:latest
+#3 [internal] load metadata for docker.io/library/ubuntu:latest
 #3 ...
 
-#4 [auth] library/busybox:pull token for registry-1.docker.io
+#4 [auth] library/ubuntu:pull token for registry-1.docker.io
 #4 DONE 0.0s
 
-#3 [internal] load metadata for docker.io/library/busybox:latest
-INFO[2022-09-05T16:44:03+09:00] debug session started. type "help" for command reference. 
-Filename: "Dockerfile"
- =>   1| FROM busybox AS build1
-      2| RUN echo hello > /hello
-      3| 
- =>   4| FROM busybox AS build2
-      5| RUN echo hi > /hi
-      6| 
-      7| FROM scratch
-(buildg) break 5
-(buildg) breakpoints
-[0]: line: Dockerfile:5
-[on-fail]: breaks on fail
-(buildg) continue
-#3 DONE 3.3s
+#3 [internal] load metadata for docker.io/library/ubuntu:latest
+#3 DONE 2.2s
 
-#5 [build2 1/2] FROM docker.io/library/busybox@sha256:20142e89dab967c01765b0aea3be4cec3a5957cc330f061e5503ef6168ae6613
-#5 resolve docker.io/library/busybox@sha256:20142e89dab967c01765b0aea3be4cec3a5957cc330f061e5503ef6168ae6613 0.0s done
-#5 sha256:2c39bef88607fd321a97560db2e2c6d029a30189c98fafb75240db93c26633ad 0B / 773.28kB 0.2s
-#5 sha256:2c39bef88607fd321a97560db2e2c6d029a30189c98fafb75240db93c26633ad 773.28kB / 773.28kB 0.3s done
-#5 extracting sha256:2c39bef88607fd321a97560db2e2c6d029a30189c98fafb75240db93c26633ad 0.0s done
-#5 DONE 14.6s
-INFO[2022-09-05T16:44:18+09:00] detected 127.0.0.53 nameserver, assuming systemd-resolved, so using resolv.conf: /run/systemd/resolve/resolv.conf 
-Breakpoint[0]: reached line: Dockerfile:5
+#5 [dev 1/3] FROM docker.io/library/ubuntu@sha256:20fa2d7bb4de7723f542be5923b06c4d704370f0390e4ae9e1c833c8785644c1
+#5 resolve docker.io/library/ubuntu@sha256:20fa2d7bb4de7723f542be5923b06c4d704370f0390e4ae9e1c833c8785644c1
+INFO[2022-09-20T20:11:52+09:00] CACHED [dev 1/3] FROM docker.io/library/ubuntu@sha256:20fa2d7bb4de7723f542be5923b06c4d704370f0390e4ae9e1c833c8785644c1 
+INFO[2022-09-20T20:11:52+09:00] debug session started. type "help" for command reference. 
 Filename: "Dockerfile"
+ =>   1| FROM ubuntu AS dev
       2| RUN echo hello > /hello
-      3| 
-      4| FROM busybox AS build2
-*=>   5| RUN echo hi > /hi
-      6| 
-      7| FROM scratch
-      8| COPY --from=build1 /hello /
-(buildg) exec --image sh
-# cat /etc/os-release
-PRETTY_NAME="Ubuntu 22.04.1 LTS"
-NAME="Ubuntu"
-VERSION_ID="22.04"
-VERSION="22.04.1 LTS (Jammy Jellyfish)"
-VERSION_CODENAME=jammy
-ID=ubuntu
-ID_LIKE=debian
-HOME_URL="https://www.ubuntu.com/"
-SUPPORT_URL="https://help.ubuntu.com/"
-BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
-PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
-UBUNTU_CODENAME=jammy
-# ls /debugroot/
-bin  dev  etc  hi  home  proc  root  tmp  usr  var
-# cat /debugroot/hi
-hi
+      3| RUN echo world > /world
+      4| 
+(buildg) break 3
+(buildg) continue
+#5 resolve docker.io/library/ubuntu@sha256:20fa2d7bb4de7723f542be5923b06c4d704370f0390e4ae9e1c833c8785644c1 0.0s done
+#5 DONE 0.0s
+INFO[2022-09-20T20:11:54+09:00] CACHED [dev 2/3] RUN echo hello > /hello     
+INFO[2022-09-20T20:11:54+09:00] detected 127.0.0.53 nameserver, assuming systemd-resolved, so using resolv.conf: /run/systemd/resolve/resolv.conf 
+
+#6 [dev 2/3] RUN echo hello > /hello
+#6 CACHED
+
+#7 [dev 3/3] RUN echo world > /world
+Breakpoint[0]: reached line: Dockerfile:3
+Filename: "Dockerfile"
+      1| FROM ubuntu AS dev
+      2| RUN echo hello > /hello
+*=>   3| RUN echo world > /world
+      4| 
+      5| FROM scratch
+      6| COPY --from=dev /hello /
+(buildg) exec
+# cat /hello /world
+hello
+world
 # 
 (buildg) quit
 ```
@@ -249,7 +228,7 @@ Flags:
 - `--file value`, `-f value`: Name of the Dockerfile
 - `--target value`: Target build stage to build.
 - `--build-arg value`: Build-time variables
-- `--image value`: Image to use for debugging stage. Specify `--image` flag for [`exec`](#exec) command in debug shell when use this image.
+- `--image value`: Image to use for debugging stage. Specify `--image` flag for [`exec`](#exec) command in debug shell when use this image. See [`./docs/bringing-image.md`](./docs/bringing-image.md) for details.
 - `--secret value` : Secret value exposed to the build. Format: `id=secretname,src=filepath`
 - `--ssh value` : Allow forwarding SSH agent to the build. Format: `default|<id>[=<socket>|<key>[,<key>]]`
 - `--cache-from value`: Import build cache from the specified location. e.g. `user/app:cache`, `type=local,src=path/to/dir` (see [`./docs/cache-from.md`](./docs/cache-from.md))
@@ -368,7 +347,7 @@ If `ARGS` isn't provided, `/bin/sh` is used by default.
 
 Flags:
 
-- `--image`: Execute command in the debuger image specified by `--image` flag of [`buildg debug`](#buildg-debug). If not specified, the command is executed on the rootfs of the current step.
+- `--image`: Execute command in the debuger image specified by `--image` flag of [`buildg debug`](#buildg-debug). If not specified, the command is executed on the rootfs of the current step.  See [`./docs/bringing-image.md`](./docs/bringing-image.md) for details.
 - `--mountroot value`: Mountpoint to mount the rootfs of the step. ignored if `--image` isn't specified. (default: `/debugroot`)
 - `--init-state`: Execute commands in an initial state of that step (experimental)
 - `--tty`, `-t`: Allocate tty (enabled by default)
@@ -436,3 +415,4 @@ Usage: `help [COMMAND]`
 # Additional documents
 
 - [`./docs/cache-from.md`](./docs/cache-from.md): Inspecting remotely cached build using `--cache-from` flag.
+- [`./docs/bringing-image.md`](./docs/bringing-image.md): Bringging your own image for debugging instructions using `--image` flag.
