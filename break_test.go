@@ -36,7 +36,7 @@ RUN echo -n d > /d`, testutil.Mirror("busybox:1.32.0"))
 	sh.Do(execNoTTY("cat /d")).OutEqual("d")
 
 	sh.Do("clearall")
-	sh.Do("breakpoints").OutEqual("")
+	sh.Do("breakpoints").OutNotContains("line: Dockerfile:3").OutNotContains("line: Dockerfile:4").OutNotContains("line: Dockerfile:5")
 	sh.Do("c")
 
 	if err := sh.Wait(); err != nil {
