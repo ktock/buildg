@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"text/tabwriter"
 
 	"github.com/ktock/buildg/pkg/buildkit"
 	"github.com/urfave/cli"
@@ -51,10 +52,13 @@ func breakpointsCommand(ctx context.Context, hCtx *handlerContext) cli.Command {
 		Usage:     "Show breakpoints key-value pairs",
 		UsageText: "breakpoints",
 		Action: func(clicontext *cli.Context) error {
+			tw := tabwriter.NewWriter(hCtx.stdout, 4, 8, 4, ' ', 0)
+			fmt.Fprintln(tw, "KEY\tDESCRIPTION")
 			hCtx.handler.Breakpoints().ForEach(func(key string, b buildkit.Breakpoint) bool {
-				fmt.Fprintf(hCtx.stdout, "[%s]: %v\n", key, b)
+				fmt.Fprintf(tw, "%s\t%s\n", key, b)
 				return true
 			})
+			tw.Flush()
 			return nil
 		},
 	}
