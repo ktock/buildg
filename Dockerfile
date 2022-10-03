@@ -1,4 +1,4 @@
-# syntax = docker/dockerfile:1.4.0
+# syntax = docker/dockerfile:1.4
 
 # Dependencies
 ARG RUNC_VERSION=v1.1.4
