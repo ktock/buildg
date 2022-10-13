@@ -53,8 +53,6 @@ jobs:
     name: Linter
     steps:
     - uses: actions/checkout@v3
-      with:
-        fetch-depth: 1
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v3
       with:
