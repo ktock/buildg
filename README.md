@@ -8,7 +8,7 @@
 
 - Source-level inspection
 - Breakpoints and step execution
-- Interactive shell on a step with your own debugigng tools
+- Interactive shell on a step with your own debugging tools
 - Based on BuildKit (with unmerged patches)
 - Supports rootless
 
