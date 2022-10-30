@@ -22,7 +22,7 @@ buildg debug /path/to/build/context
 
 The above command starts an interactive debugger session for debugging the Dockerfile in `/path/to/build/context`.
 
-For the detailed command refenrece, refer to [Command reference](#command-reference).
+For the detailed command reference, refer to [Command reference](#command-reference).
 
 ### Exmaple with terminal
 
