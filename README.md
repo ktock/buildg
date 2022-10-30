@@ -99,7 +99,7 @@ world
 ## Use on IDEs
 
 Buildg allows visual and interactive debugging of Dockerfile on editors like VS Code, emacs and Neovim.
-This is provided throgh [DAP(Debug Adapter Protocol)](https://microsoft.github.io/debug-adapter-protocol/) supported by editors [(official list)](https://microsoft.github.io/debug-adapter-protocol/implementors/tools/).
+This is provided through [DAP(Debug Adapter Protocol)](https://microsoft.github.io/debug-adapter-protocol/) supported by editors [(official list)](https://microsoft.github.io/debug-adapter-protocol/implementors/tools/).
 
 See [`./examples/dap/README.md`](./examples/dap/README.md) for usage of DAP.
 
