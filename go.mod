@@ -7,7 +7,7 @@ require (
 	github.com/containerd/containerd v1.6.12
 	github.com/containerd/fifo v1.0.0
 	github.com/docker/cli v20.10.21+incompatible
-	github.com/google/go-dap v0.6.0
+	github.com/google/go-dap v0.7.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/moby/buildkit v0.0.0-00010101000000-000000000000
 	github.com/moby/sys/signal v0.7.0
