@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/containerd/console v1.0.3
-	github.com/containerd/containerd v1.6.12
+	github.com/containerd/containerd v1.6.13
 	github.com/containerd/fifo v1.0.0
 	github.com/docker/cli v20.10.21+incompatible
 	github.com/google/go-dap v0.7.0
@@ -23,7 +23,7 @@ require (
 require (
 	cloud.google.com/go v0.81.0 // indirect
 	github.com/Microsoft/go-winio v0.5.2 // indirect
-	github.com/Microsoft/hcsshim v0.9.5 // indirect
+	github.com/Microsoft/hcsshim v0.9.6 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/armon/circbuf v0.0.0-20190214190532-5111143e8da2 // indirect
 	github.com/containerd/cgroups v1.0.3 // indirect
