@@ -375,7 +375,7 @@ func (s *Server) onSetBreakpointsRequest(request *dap.SetBreakpointsRequest) {
 		}
 		breakpoints = append(breakpoints, dap.Breakpoint{
 			Id:       int(keyI),
-			Source:   args.Source,
+			Source:   &args.Source,
 			Line:     args.Breakpoints[i].Line,
 			Verified: true,
 		})
