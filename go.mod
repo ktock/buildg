@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/containerd/console v1.0.3
-	github.com/containerd/containerd v1.6.15
+	github.com/containerd/containerd v1.6.16
 	github.com/containerd/fifo v1.0.0
 	github.com/docker/cli v20.10.23+incompatible
 	github.com/google/go-dap v0.7.0
@@ -64,7 +64,7 @@ require (
 	github.com/opencontainers/runc v1.1.3 // indirect
 	github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417 // indirect
 	github.com/opencontainers/selinux v1.10.1 // indirect
-	github.com/pelletier/go-toml v1.9.4 // indirect
+	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/tonistiigi/fsutil v0.0.0-20220510150904-0dbf3a8a7d58 // indirect
 	github.com/tonistiigi/go-archvariant v1.0.0 // indirect
