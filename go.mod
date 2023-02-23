@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/containerd/console v1.0.3
-	github.com/containerd/containerd v1.6.17
+	github.com/containerd/containerd v1.6.18
 	github.com/containerd/fifo v1.1.0
 	github.com/docker/cli v23.0.1+incompatible
 	github.com/google/go-dap v0.7.0
