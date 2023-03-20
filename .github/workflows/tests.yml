@@ -71,5 +71,5 @@ jobs:
         fetch-depth: 100
     - name: "Check DCO sign"
       run: |
-        go install github.com/vbatts/git-validation@v1.1.0
+        go install github.com/vbatts/git-validation@v1.2.0
         git-validation -v -run DCO
