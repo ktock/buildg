@@ -188,7 +188,7 @@ func (d *debugger) stopped() <-chan []int {
 	return d.stoppedCh
 }
 
-func (d *debugger) breakHandler(ctx context.Context, bCtx buildkit.BreakContext) error {
+func (d *debugger) breakHandler(_ context.Context, bCtx buildkit.BreakContext) error {
 	for key, desc := range bCtx.Hits {
 		logrus.Debugf("Breakpoint[%s]: %s", key, desc)
 	}

@@ -14,7 +14,7 @@ import (
 
 const defaultListRange = 3
 
-func listCommand(ctx context.Context, hCtx *handlerContext) cli.Command {
+func listCommand(_ context.Context, hCtx *handlerContext) cli.Command {
 	return cli.Command{
 		Name:      "list",
 		Aliases:   []string{"ls", "l"},
@@ -71,11 +71,11 @@ func printLines(h *buildkit.Handler, w io.Writer, locs []*buildkit.Location, bef
 		lastLinePrinted := false
 		firstPrint := true
 		for i := 1; scanner.Scan(); i++ {
-			print := false
+			doPrint := false
 			target := false
 			for _, r := range ranges {
 				if all || int(r.Start.Line)-before <= i && i <= int(r.End.Line)+after {
-					print = true
+					doPrint = true
 					if int(r.Start.Line) <= i && i <= int(r.End.Line) {
 						target = true
 						break
@@ -83,7 +83,7 @@ func printLines(h *buildkit.Handler, w io.Writer, locs []*buildkit.Location, bef
 				}
 			}
 
-			if !print {
+			if !doPrint {
 				lastLinePrinted = false
 				continue
 			}

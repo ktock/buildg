@@ -88,7 +88,7 @@ func NewOnFailBreakpoint() Breakpoint {
 
 type onFailBreakpoint struct{}
 
-func (b *onFailBreakpoint) isTarget(ctx context.Context, status *RegisteredStatus, locs []*Location) (bool, string, []*Location, error) {
+func (b *onFailBreakpoint) isTarget(_ context.Context, status *RegisteredStatus, locs []*Location) (bool, string, []*Location, error) {
 	return status.Err != nil, fmt.Sprintf("caught error %v", status.Err), locs, nil
 }
 
@@ -96,7 +96,7 @@ func (b *onFailBreakpoint) String() string {
 	return "breaks on fail"
 }
 
-func (b *onFailBreakpoint) IsMarked(source *pb.SourceInfo, line int64) bool {
+func (b *onFailBreakpoint) IsMarked(_ *pb.SourceInfo, _ int64) bool {
 	return false
 }
 
@@ -109,7 +109,7 @@ type lineBreakpoint struct {
 	line     int64
 }
 
-func (b *lineBreakpoint) isTarget(ctx context.Context, status *RegisteredStatus, locs []*Location) (bool, string, []*Location, error) {
+func (b *lineBreakpoint) isTarget(_ context.Context, _ *RegisteredStatus, locs []*Location) (bool, string, []*Location, error) {
 	var hits []*Location
 	var found bool
 	for _, loc := range locs {

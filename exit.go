@@ -7,7 +7,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-func exitCommand(ctx context.Context, hCtx *handlerContext) cli.Command {
+func exitCommand(_ context.Context, hCtx *handlerContext) cli.Command {
 	return cli.Command{
 		Name:    "exit",
 		Aliases: []string{"quit", "q"},

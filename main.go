@@ -151,10 +151,7 @@ func prepareRootlessChild() error {
 	if mode := rInfo.Mode(); mode&fs.ModeSymlink == 0 {
 		return fmt.Errorf("unexpected runc root file mode: %v", mode)
 	}
-	if err := os.Remove("/run/runc"); err != nil {
-		return err
-	}
-	return nil
+	return os.Remove("/run/runc")
 }
 
 func newVersionCommand() cli.Command {
@@ -713,9 +710,9 @@ func (c *stdioConn) Write(b []byte) (n int, err error) {
 func (c *stdioConn) Close() error                       { return nil }
 func (c *stdioConn) LocalAddr() net.Addr                { return dummyAddr{} }
 func (c *stdioConn) RemoteAddr() net.Addr               { return dummyAddr{} }
-func (c *stdioConn) SetDeadline(t time.Time) error      { return nil }
-func (c *stdioConn) SetReadDeadline(t time.Time) error  { return nil }
-func (c *stdioConn) SetWriteDeadline(t time.Time) error { return nil }
+func (c *stdioConn) SetDeadline(_ time.Time) error      { return nil }
+func (c *stdioConn) SetReadDeadline(_ time.Time) error  { return nil }
+func (c *stdioConn) SetWriteDeadline(_ time.Time) error { return nil }
 
 type dummyAddr struct{}
 

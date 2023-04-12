@@ -380,7 +380,7 @@ type pipeListener struct {
 	closedMu  sync.Mutex
 }
 
-func (l *pipeListener) dial(ctx context.Context, _ string) (net.Conn, error) {
+func (l *pipeListener) dial(_ context.Context, _ string) (net.Conn, error) {
 	if l.isClosed() {
 		return nil, fmt.Errorf("closed")
 	}
@@ -436,7 +436,7 @@ type nopConsoleFile struct {
 
 func (f *nopConsoleFile) Close() error { return nil }
 
-func (f *nopConsoleFile) Read(p []byte) (int, error) { return 0, io.EOF }
+func (f *nopConsoleFile) Read(_ []byte) (int, error) { return 0, io.EOF }
 
 func (f *nopConsoleFile) Fd() uintptr { return 0 }
 

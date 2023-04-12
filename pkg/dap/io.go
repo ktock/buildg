@@ -198,7 +198,7 @@ type signalForwarder struct {
 	procMu sync.Mutex
 }
 
-func (s *signalForwarder) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *signalForwarder) ServeHTTP(_ http.ResponseWriter, r *http.Request) {
 	sig := r.PostFormValue("signal")
 	syscallSignal, ok := mobysignal.SignalMap[sig]
 	if !ok {
@@ -215,7 +215,7 @@ func (s *signalForwarder) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *signalForwarder) watchSignal(ctx context.Context, proc gwclient.ContainerProcess, con console.Console) {
+func (s *signalForwarder) watchSignal(ctx context.Context, proc gwclient.ContainerProcess, _ console.Console) {
 	go func() {
 		s.procMu.Lock()
 		s.proc = proc
