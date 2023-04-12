@@ -8,7 +8,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-func reloadCommand(ctx context.Context, hCtx *handlerContext) cli.Command {
+func reloadCommand(_ context.Context, hCtx *handlerContext) cli.Command {
 	return cli.Command{
 		Name:      "reload",
 		Usage:     "reload context and restart build",

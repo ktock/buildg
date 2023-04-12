@@ -9,7 +9,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-func logCommand(ctx context.Context, hCtx *handlerContext) cli.Command {
+func logCommand(_ context.Context, hCtx *handlerContext) cli.Command {
 	return cli.Command{
 		Name:      "log",
 		Usage:     "show build log",

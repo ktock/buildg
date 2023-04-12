@@ -1005,7 +1005,7 @@ RUN date > /
 	}
 }
 
-func newDAPClient(t *testing.T, conn net.Conn) *dapClient {
+func newDAPClient(_ *testing.T, conn net.Conn) *dapClient {
 	c := &dapClient{
 		conn:  conn,
 		mesCh: make(chan dap.Message),

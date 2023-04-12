@@ -10,7 +10,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-func breakCommand(ctx context.Context, hCtx *handlerContext) cli.Command {
+func breakCommand(_ context.Context, hCtx *handlerContext) cli.Command {
 	return cli.Command{
 		Name:    "break",
 		Aliases: []string{"b"},
@@ -45,7 +45,7 @@ on-fail  breaks on step that returns an error
 	}
 }
 
-func breakpointsCommand(ctx context.Context, hCtx *handlerContext) cli.Command {
+func breakpointsCommand(_ context.Context, hCtx *handlerContext) cli.Command {
 	return cli.Command{
 		Name:      "breakpoints",
 		Aliases:   []string{"bp"},
@@ -64,7 +64,7 @@ func breakpointsCommand(ctx context.Context, hCtx *handlerContext) cli.Command {
 	}
 }
 
-func clearCommand(ctx context.Context, hCtx *handlerContext) cli.Command {
+func clearCommand(_ context.Context, hCtx *handlerContext) cli.Command {
 	return cli.Command{
 		Name:  "clear",
 		Usage: "Clear a breakpoint. Specify breakpoint key.",
@@ -86,7 +86,7 @@ BREAKPOINT_KEY is the key of a breakpoint which is printed when executing "break
 	}
 }
 
-func clearAllCommand(ctx context.Context, hCtx *handlerContext) cli.Command {
+func clearAllCommand(_ context.Context, hCtx *handlerContext) cli.Command {
 	return cli.Command{
 		Name:      "clearall",
 		Usage:     "Clear all breakpoints",
@@ -98,7 +98,7 @@ func clearAllCommand(ctx context.Context, hCtx *handlerContext) cli.Command {
 	}
 }
 
-func nextCommand(ctx context.Context, hCtx *handlerContext) cli.Command {
+func nextCommand(_ context.Context, hCtx *handlerContext) cli.Command {
 	return cli.Command{
 		Name:      "next",
 		Aliases:   []string{"n"},
@@ -112,7 +112,7 @@ func nextCommand(ctx context.Context, hCtx *handlerContext) cli.Command {
 	}
 }
 
-func continueCommand(ctx context.Context, hCtx *handlerContext) cli.Command {
+func continueCommand(_ context.Context, hCtx *handlerContext) cli.Command {
 	return cli.Command{
 		Name:    "continue",
 		Aliases: []string{"c"},
