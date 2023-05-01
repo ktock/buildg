@@ -14,7 +14,7 @@ require (
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.0
-	github.com/urfave/cli v1.22.12
+	github.com/urfave/cli v1.22.13
 	golang.org/x/crypto v0.8.0
 	golang.org/x/sync v0.1.0
 	google.golang.org/grpc v1.54.0
