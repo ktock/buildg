@@ -3,7 +3,7 @@ module github.com/ktock/buildg
 go 1.18
 
 require (
-	github.com/containerd/console v1.0.3
+	github.com/containerd/console v1.0.4
 	github.com/containerd/containerd v1.6.19
 	github.com/containerd/fifo v1.1.0
 	github.com/docker/cli v25.0.3+incompatible
