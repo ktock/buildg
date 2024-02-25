@@ -17,7 +17,7 @@ buildg:
 	CGO_ENABLED=0 go build -o $(PREFIX)/buildg $(GO_LD_FLAGS) $(GO_BUILDTAGS) -v .
 
 install:
-	install -D -m 755 $(PREFIX)/buildg $(CMD_DESTDIR)/bin
+	install -D -m 755 $(PREFIX)/buildg $(CMD_DESTDIR)/bin/buildg
 
 artifacts: clean
 	GOOS=linux GOARCH=amd64 make buildg
