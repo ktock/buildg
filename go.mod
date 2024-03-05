@@ -17,7 +17,7 @@ require (
 	github.com/urfave/cli v1.22.14
 	golang.org/x/crypto v0.20.0
 	golang.org/x/sync v0.6.0
-	google.golang.org/grpc v1.62.0
+	google.golang.org/grpc v1.62.1
 )
 
 require (
