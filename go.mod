@@ -6,7 +6,7 @@ require (
 	github.com/containerd/console v1.0.4
 	github.com/containerd/containerd v1.6.19
 	github.com/containerd/fifo v1.1.0
-	github.com/docker/cli v25.0.3+incompatible
+	github.com/docker/cli v26.0.1+incompatible
 	github.com/google/go-dap v0.8.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/moby/buildkit v0.0.0-00010101000000-000000000000
