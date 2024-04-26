@@ -1,2 +1,4 @@
 /out
 .vscode
+.idea/
+.go-version

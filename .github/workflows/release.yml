@@ -10,7 +10,7 @@ env:
 
 jobs:
   release:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     name: Release
     env:
       OUTPUT_DIR: ${{ github.workspace }}/builds
@@ -70,9 +70,9 @@ jobs:
         ASSET_FLAGS=()
         ls -al ${OUTPUT_DIR}/
         gh release create -F ${GITHUB_WORKSPACE}/release-note.txt --draft --title "${RELEASE_TAG}" "${RELEASE_TAG}" ${OUTPUT_DIR}/*
-  
+
   containerize:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     name: Containerize
     steps:
       -
