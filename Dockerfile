@@ -18,7 +18,7 @@ COPY . /go/src/github.com/ktock/buildg
 WORKDIR /go/src/github.com/ktock/buildg
 RUN --mount=type=cache,target=/root/.cache/go-build \
   --mount=type=cache,target=/go/pkg/mod \
-  PREFIX=/out/ make
+  PREFIX=/out make
 
 # build runc
 # Adopted from https://github.com/containerd/nerdctl/blob/v0.22.2/Dockerfile#L75

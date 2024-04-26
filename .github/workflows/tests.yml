@@ -34,7 +34,8 @@ jobs:
     - uses: actions/checkout@v4
     - name: Build and install
       run: |
-        DOCKER_BUILDKIT=1 docker build --output type=tar,dest=${GITHUB_WORKSPACE}/buildg-full.tar --target out-full --platform amd64 .
+        GO_VERSION=$(go version | cut -d' ' -f3 | cut -c3-)
+        DOCKER_BUILDKIT=1 docker build --build-arg GO_VERSION=$GO_VERSION --output type=tar,dest=${GITHUB_WORKSPACE}/buildg-full.tar --target out-full --platform linux/amd64 .
         sudo tar -C /usr/local/ -xvf ${GITHUB_WORKSPACE}/buildg-full.tar
     - name: Test
       run: |
