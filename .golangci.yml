@@ -1,18 +1,37 @@
+version: "2"
 linters:
   enable:
-    - staticcheck
-    - unconvert
-    - gofmt
-    - goimports
-    - revive
-    - ineffassign
-    - vet
-    - unused
     - misspell
+    - revive
+    - unconvert
   disable:
     - errcheck
-
-run:
-  deadline: 4m
-  skip-dirs:
-    - out
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - revive
+        text: unused-parameter
+      - linters:
+          - revive
+        text: redefines-builtin-id
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+      - out
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

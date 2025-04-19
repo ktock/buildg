@@ -40,10 +40,10 @@ jobs:
     - name: Test
       run: |
         if [ "${{ matrix.mode }}" == "root" ] ; then
-          sudo go test -v ./...
+          sudo go test -timeout 30m -v ./...
         elif [ "${{ matrix.mode }}" == "rootless" ] ; then
           mkdir -p ${GITHUB_WORKSPACE}/tmp
-          TEST_BUILDG_TMP_DIR=${GITHUB_WORKSPACE}/tmp go test -v ./...
+          TEST_BUILDG_TMP_DIR=${GITHUB_WORKSPACE}/tmp go test -timeout 30m -v ./...
         else
           echo "unknown mode ${{ matrix.mode }}"
           exit 1
@@ -55,9 +55,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@v5
+      uses: golangci/golangci-lint-action@v7
       with:
-        version: v1.57.2
+        version: v2.0
         args: --verbose
 
   project:

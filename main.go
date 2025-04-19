@@ -576,7 +576,7 @@ func parseSolveOpt(clicontext *cli.Context) (*client.SolveOpt, error) {
 	var optStr []string
 	localStr := []string{"context=" + buildContext, "dockerfile=" + buildContext}
 	if filename := clicontext.String("file"); filename == "-" {
-		return nil, fmt.Errorf("Dockerfile from stdin isn't supported as of now")
+		return nil, fmt.Errorf("dockerfile from stdin isn't supported as of now")
 	} else if filename != "" {
 		dir, file := filepath.Split(filename)
 		if dir != "" {
@@ -691,9 +691,8 @@ func tryLockOnBuildKitRootDir(dir string) (ok bool, unlock func() error, retErr 
 		}, nil
 	} else if err == syscall.EWOULDBLOCK {
 		return false, func() error { return nil }, nil
-	} else {
-		return false, nil, err
 	}
+	return false, nil, err
 }
 
 type stdioConn struct {

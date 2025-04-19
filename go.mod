@@ -1,6 +1,8 @@
 module github.com/ktock/buildg
 
-go 1.22
+go 1.23.0
+
+toolchain go1.23.2
 
 require (
 	github.com/containerd/console v1.0.4
@@ -9,14 +11,14 @@ require (
 	github.com/docker/cli v26.1.0+incompatible
 	github.com/google/go-dap v0.8.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
-	github.com/moby/buildkit v0.13.2
+	github.com/moby/buildkit v0.0.0-00010101000000-000000000000
 	github.com/moby/sys/signal v0.7.0
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/urfave/cli v1.22.14
-	golang.org/x/crypto v0.22.0
-	golang.org/x/sync v0.7.0
+	golang.org/x/crypto v0.37.0
+	golang.org/x/sync v0.13.0
 	google.golang.org/grpc v1.63.2
 )
 
@@ -86,8 +88,8 @@ require (
 	go.opentelemetry.io/otel/trace v1.4.1 // indirect
 	go.opentelemetry.io/proto/otlp v0.12.0 // indirect
 	golang.org/x/net v0.23.0 // indirect
-	golang.org/x/sys v0.19.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
+	golang.org/x/sys v0.32.0 // indirect
+	golang.org/x/text v0.24.0 // indirect
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
 	google.golang.org/genproto v0.0.0-20240227224415-6ceb2ff114de // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240227224415-6ceb2ff114de // indirect
