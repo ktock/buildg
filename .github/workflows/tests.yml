@@ -32,6 +32,21 @@ jobs:
       with:
         go-version: '1.22.x'
     - uses: actions/checkout@v4
+    - name: Rootlesskit setup
+      run: |
+        cat <<EOT | sudo tee "/etc/apparmor.d/usr.local.bin.rootlesskit"
+        # ref: https://ubuntu.com/blog/ubuntu-23-10-restricted-unprivileged-user-namespaces
+        abi <abi/4.0>,
+        include <tunables/global>
+        
+        /usr/local/bin/rootlesskit flags=(unconfined) {
+          userns,
+        
+          # Site-specific additions and overrides. See local/README for details.
+          include if exists <local/usr.local.bin.rootlesskit>
+        }
+        EOT
+        sudo systemctl restart apparmor.service
     - name: Build and install
       run: |
         GO_VERSION=$(go version | cut -d' ' -f3 | cut -c3-)
