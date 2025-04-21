@@ -6,7 +6,7 @@ ARG ROOTLESSKIT_VERSION=v2.3.4
 ARG SLIRP4NETNS_VERSION=v1.3.2
 
 # Images
-ARG GO_VERSION=1.22
+ARG GO_VERSION=1.23
 
 # build buildg
 FROM --platform=${BUILDPLATFORM} golang:${GO_VERSION}-bookworm AS base

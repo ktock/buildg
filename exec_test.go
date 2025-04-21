@@ -23,7 +23,7 @@ RUN echo -n a > /a`, testutil.Mirror("busybox:1.32.0"))
 	tmpCtx, doneTmpCtx := testutil.NewTempContext(t, dt)
 	defer doneTmpCtx()
 
-	sh := testutil.NewDebugShell(t, tmpCtx, testutil.WithOptions("--image="+testutil.Mirror("ubuntu:22.04")))
+	sh := testutil.NewDebugShell(t, tmpCtx, testutil.WithOptions("--image="+testutil.Mirror("ubuntu:24.04")))
 	defer sh.Close(t)
 	sh.Do("next")
 	sh.Do(execNoTTY("cat /a")).OutEqual("a")
@@ -53,7 +53,7 @@ RUN cat /b
 	tmpCtx, doneTmpCtx := testutil.NewTempContext(t, dt)
 	defer doneTmpCtx()
 
-	sh := testutil.NewDebugShell(t, tmpCtx, testutil.WithOptions("--image="+testutil.Mirror("ubuntu:22.04")))
+	sh := testutil.NewDebugShell(t, tmpCtx, testutil.WithOptions("--image="+testutil.Mirror("ubuntu:24.04")))
 	defer sh.Close(t)
 	sh.Do(execNoTTY("cat /a")).OutContains("process execution failed")
 	sh.Do("next")

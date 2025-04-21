@@ -2,7 +2,7 @@ module github.com/ktock/buildg
 
 go 1.23.0
 
-toolchain go1.23.2
+toolchain go1.23.8
 
 require (
 	github.com/containerd/console v1.0.4
