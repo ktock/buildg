@@ -124,7 +124,7 @@ They are included in our release tar `buildg-full-<version>-<os>-<arch>.tar.gz` 
 
 ### Building binary using make
 
-Go 1.18+ is needed.
+Go 1.23+ is needed.
 
 ```
 $ git clone https://github.com/ktock/buildg

@@ -1,5 +1,5 @@
 variable "GO_VERSION" {
-  default = "1.22"
+  default = "1.23"
 }
 
 target "_common" {
