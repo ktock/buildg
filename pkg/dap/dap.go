@@ -295,7 +295,7 @@ func (s *Server) launchDebugger(cfg LaunchConfig) error {
 	if s.debugger == nil {
 		return fmt.Errorf("launch error: debugger is not available")
 	}
-	disableBreakpoints := false
+	var disableBreakpoints bool
 	if cfg.NoDebug {
 		disableBreakpoints = true
 	}
@@ -745,11 +745,11 @@ container execution on non-RUN instruction is experimental
 				}()
 				select {
 				case <-doneCh:
-					s.outputStdoutWriter().Write([]byte("container finished"))
+					fmt.Fprintf(s.outputStdoutWriter(), "container finished")
 				case err := <-errCh:
-					s.outputStdoutWriter().Write([]byte(fmt.Sprintf("container finished with error: %v", err)))
+					fmt.Fprintf(s.outputStdoutWriter(), "container finished with error: %v", err)
 				case err := <-gCtx.Done():
-					s.outputStdoutWriter().Write([]byte(fmt.Sprintf("finishing container due to server shutdown: %v", err)))
+					fmt.Fprintf(s.outputStdoutWriter(), "finishing container due to server shutdown: %v", err)
 				}
 				for i := len(cleanups) - 1; i >= 0; i-- {
 					cleanups[i]()
@@ -757,9 +757,9 @@ container execution on non-RUN instruction is experimental
 				select {
 				case <-doneCh:
 				case err := <-errCh:
-					s.outputStdoutWriter().Write([]byte(fmt.Sprintf("container exit with error: %v", err)))
+					fmt.Fprintf(s.outputStdoutWriter(), "container exit with error: %v", err)
 				case <-time.After(3 * time.Second):
-					s.outputStdoutWriter().Write([]byte("container exit timeout"))
+					fmt.Fprintf(s.outputStdoutWriter(), "container exit timeout")
 				}
 				return nil
 			})

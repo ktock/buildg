@@ -22,13 +22,13 @@ FROM scratch
 COPY --from=dev /hello /
 ```
 
-The above Dockerfile uses `scratch` and `busybox` as the base images but here we use `ubuntu:22.04` for debugging these stages.
+The above Dockerfile uses `scratch` and `busybox` as the base images but here we use `ubuntu:24.04` for debugging these stages.
 
 ```
-$ buildg debug --image=ubuntu:22.04 /tmp/ctx
+$ buildg debug --image=ubuntu:24.04 /tmp/ctx
 ```
 
-Here we launch a shell on line 2 with the rootfs of `ubuntu:22.04` instead of `busybox` (the original rootfs of that stage).
+Here we launch a shell on line 2 with the rootfs of `ubuntu:24.04` instead of `busybox` (the original rootfs of that stage).
 
 ```
 Filename: "Dockerfile"
@@ -48,18 +48,19 @@ Filename: "Dockerfile"
       5| COPY --from=dev /hello /
 (buildg) exec --image
 # cat /etc/os-release
-PRETTY_NAME="Ubuntu 22.04.1 LTS"
+PRETTY_NAME="Ubuntu 24.04 LTS"
 NAME="Ubuntu"
-VERSION_ID="22.04"
-VERSION="22.04.1 LTS (Jammy Jellyfish)"
-VERSION_CODENAME=jammy
+VERSION_ID="24.04"
+VERSION="24.04 LTS (Noble Numbat)"
+VERSION_CODENAME=noble
 ID=ubuntu
 ID_LIKE=debian
 HOME_URL="https://www.ubuntu.com/"
 SUPPORT_URL="https://help.ubuntu.com/"
 BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
 PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
-UBUNTU_CODENAME=jammy
+UBUNTU_CODENAME=noble
+LOGO=ubuntu-logo
 ```
 
 The original rootfs of that stage (`busybox`) is mounted at `/debugroot`.

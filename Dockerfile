@@ -1,15 +1,15 @@
 # syntax = docker/dockerfile:1.4
 
 # Dependencies
-ARG RUNC_VERSION=v1.1.4
-ARG ROOTLESSKIT_VERSION=v1.1.0
-ARG SLIRP4NETNS_VERSION=v1.2.0
+ARG RUNC_VERSION=v1.1.12
+ARG ROOTLESSKIT_VERSION=v2.3.4
+ARG SLIRP4NETNS_VERSION=v1.3.2
 
 # Images
-ARG GO_VERSION=1.19
+ARG GO_VERSION=1.22
 
 # build buildg
-FROM --platform=${BUILDPLATFORM} golang:${GO_VERSION}-bullseye AS base
+FROM --platform=${BUILDPLATFORM} golang:${GO_VERSION}-bookworm AS base
 
 FROM base AS build-buildg
 ARG TARGETARCH
@@ -18,7 +18,7 @@ COPY . /go/src/github.com/ktock/buildg
 WORKDIR /go/src/github.com/ktock/buildg
 RUN --mount=type=cache,target=/root/.cache/go-build \
   --mount=type=cache,target=/go/pkg/mod \
-  PREFIX=/out/ make
+  PREFIX=/out make
 
 # build runc
 # Adopted from https://github.com/containerd/nerdctl/blob/v0.22.2/Dockerfile#L75
@@ -28,7 +28,8 @@ ARG RUNC_VERSION
 RUN dpkg --add-architecture arm64 && \
   dpkg --add-architecture amd64 && \
   apt-get update && \
-  apt-get install -y crossbuild-essential-amd64 crossbuild-essential-arm64 libseccomp-dev:amd64 libseccomp-dev:arm64
+  apt-get install -y crossbuild-essential-amd64 crossbuild-essential-arm64 libseccomp-dev:amd64 libseccomp-dev:arm64 && \
+  apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/*
 RUN git clone https://github.com/opencontainers/runc.git /go/src/github.com/opencontainers/runc
 WORKDIR /go/src/github.com/opencontainers/runc
 RUN git checkout ${RUNC_VERSION} && \
@@ -80,9 +81,10 @@ FROM scratch AS out-full
 COPY --from=build-full /out /
 
 # create buildg container
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 ARG TARGETARCH
-RUN apt-get update && apt-get install -y ca-certificates
+RUN apt-get update && apt-get install -y ca-certificates && \
+  apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/*
 COPY --from=out-full / /usr/local/
 VOLUME /var/lib/buildg
 ENTRYPOINT [ "/usr/local/bin/buildg"]

@@ -119,7 +119,7 @@ func (h *Handler) handle(ctx context.Context, info *RegisteredStatus, locs []*Lo
 		hits[key] = bp
 		isBreakpoint = true
 	}
-	if h.disableBreakpoints || !(h.stopOnEntry && !h.entried) && !h.breakEachVertex && !isBreakpoint {
+	if h.disableBreakpoints || (!h.stopOnEntry || h.entried) && !h.breakEachVertex && !isBreakpoint {
 		logrus.Debugf("skipping non-breakpoint: %v", locs)
 		return nil
 	}
