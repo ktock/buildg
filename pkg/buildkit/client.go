@@ -10,11 +10,11 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/containerd/containerd/remotes/docker"
-	ctdsnapshots "github.com/containerd/containerd/snapshots"
-	"github.com/containerd/containerd/snapshots/native"
-	"github.com/containerd/containerd/snapshots/overlay"
-	"github.com/containerd/containerd/snapshots/overlay/overlayutils"
+	"github.com/containerd/containerd/v2/core/remotes/docker"
+	ctdsnapshots "github.com/containerd/containerd/v2/core/snapshots"
+	"github.com/containerd/containerd/v2/plugins/snapshots/native"
+	"github.com/containerd/containerd/v2/plugins/snapshots/overlay"
+	"github.com/containerd/containerd/v2/plugins/snapshots/overlay/overlayutils"
 	"github.com/moby/buildkit/cache/remotecache"
 	localremotecache "github.com/moby/buildkit/cache/remotecache/local"
 	registryremotecache "github.com/moby/buildkit/cache/remotecache/registry"
@@ -26,7 +26,9 @@ import (
 	dockerfile "github.com/moby/buildkit/frontend/dockerfile/builder"
 	"github.com/moby/buildkit/frontend/gateway"
 	"github.com/moby/buildkit/session"
+	"github.com/moby/buildkit/solver"
 	"github.com/moby/buildkit/solver/bboltcachestorage"
+	"github.com/moby/buildkit/util/db/boltutil"
 	"github.com/moby/buildkit/util/grpcerrors"
 	"github.com/moby/buildkit/util/network/cniprovider"
 	"github.com/moby/buildkit/util/network/netproviders"
@@ -274,7 +276,14 @@ func newClient(ctx context.Context, cfg *config.Config, debugController *debugCo
 	if err != nil {
 		return nil, nil, err
 	}
-	gwfrontend := gateway.NewGatewayFrontend(wc)
+	historyDB, err := boltutil.Open(filepath.Join(cfg.Root, "history.db"), 0600, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	gwfrontend, err := gateway.NewGatewayFrontend(wc.Infos(), nil)
+	if err != nil {
+		return nil, nil, err
+	}
 	if debugController != nil {
 		gwfrontend = debugController.frontendWithDebug(gwfrontend)
 	}
@@ -287,11 +296,16 @@ func newClient(ctx context.Context, cfg *config.Config, debugController *debugCo
 	controller, err := control.NewController(control.Opt{
 		SessionManager:            sessionManager,
 		WorkerController:          wc,
-		CacheKeyStorage:           cacheStorage,
 		Frontends:                 frontends,
 		ResolveCacheImporterFuncs: remoteCacheImporterFuncs,
 		ResolveCacheExporterFuncs: map[string]remotecache.ResolveCacheExporterFunc{}, // TODO: support remote cahce exporter
-		Entitlements:              []string{},                                        // TODO
+		CacheManager:              solver.NewCacheManager(context.TODO(), "local", cacheStorage, worker.NewCacheResultStorage(wc)),
+		Entitlements:              []string{}, // TODO
+		HistoryDB:                 historyDB,
+		CacheStore:                cacheStorage,
+		LeaseManager:              w.LeaseManager(),
+		ContentStore:              w.ContentStore(),
+		GarbageCollect:            w.GarbageCollect,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -352,7 +366,7 @@ func newWorker(ctx context.Context, cfg *config.Config) (worker.Worker, docker.R
 			BinaryDir:  cfg.Workers.OCI.CNIBinaryPath,
 		},
 	}
-	opt, err := runc.NewWorkerOpt(root, snFactory, rootless, oci.ProcessSandbox, nil, nil, nc, nil, "", "", nil, "", "")
+	opt, err := runc.NewWorkerOpt(root, snFactory, rootless, oci.ProcessSandbox, nil, nil, nc, nil, "", "", false, nil, "", "", nil)
 	if err != nil {
 		return nil, nil, err
 	}

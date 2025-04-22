@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/containerd/console"
-	"github.com/containerd/containerd/pkg/userns"
 	dockerconfig "github.com/docker/cli/cli/config"
 	"github.com/ktock/buildg/pkg/buildkit"
 	"github.com/ktock/buildg/pkg/dap"
@@ -29,6 +28,7 @@ import (
 	"github.com/moby/buildkit/session"
 	"github.com/moby/buildkit/session/auth/authprovider"
 	"github.com/moby/buildkit/session/sshforward/sshprovider"
+	"github.com/moby/sys/userns"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
@@ -574,13 +574,16 @@ func parseSolveOpt(clicontext *cli.Context) (*client.SolveOpt, error) {
 		return nil, fmt.Errorf("unsupported build context: %q", buildContext)
 	}
 	var optStr []string
-	localStr := []string{"context=" + buildContext, "dockerfile=" + buildContext}
+	localDirs := map[string]string{
+		"context":    buildContext,
+		"dockerfile": buildContext,
+	}
 	if filename := clicontext.String("file"); filename == "-" {
 		return nil, fmt.Errorf("dockerfile from stdin isn't supported as of now")
 	} else if filename != "" {
 		dir, file := filepath.Split(filename)
 		if dir != "" {
-			localStr = append(localStr, "dockerfile="+dir)
+			localDirs["dockerfile"] = dir
 		}
 		optStr = append(optStr, "filename="+file)
 	}
@@ -590,10 +593,6 @@ func parseSolveOpt(clicontext *cli.Context) (*client.SolveOpt, error) {
 	for _, ba := range clicontext.StringSlice("build-arg") {
 		optStr = append(optStr, "build-arg:"+ba)
 	}
-	localDirs, err := build.ParseLocal(localStr)
-	if err != nil {
-		return nil, err
-	}
 	frontendAttrs, err := build.ParseOpt(optStr)
 	if err != nil {
 		return nil, err
@@ -602,7 +601,9 @@ func parseSolveOpt(clicontext *cli.Context) (*client.SolveOpt, error) {
 	if err != nil {
 		return nil, err
 	}
-	attachable := []session.Attachable{authprovider.NewDockerAuthProvider(dockerconfig.LoadDefaultConfigFile(os.Stderr))}
+	attachable := []session.Attachable{
+		authprovider.NewDockerAuthProvider(authprovider.DockerAuthProviderConfig{
+			ConfigFile: dockerconfig.LoadDefaultConfigFile(os.Stderr)})}
 	if ssh := clicontext.StringSlice("ssh"); len(ssh) > 0 {
 		configs, err := build.ParseSSH(ssh)
 		if err != nil {
