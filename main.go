@@ -73,6 +73,11 @@ func main() {
 			EnvVar: "BUILDG_ROOTLESSKIT_ARGS",
 			Value:  "",
 		},
+		cli.DurationFlag{
+			Name:  "startup-timeout",
+			Usage: "Timeout for starting up buildg",
+			Value: 3 * time.Second,
+		},
 	}, flags...)
 	app.Commands = []cli.Command{
 		newDebugCommand(),
@@ -372,10 +377,11 @@ func debugAction(clicontext *cli.Context) error {
 			defer progressWriter.enable()
 			return h.breakHandler(ctx, bCtx, progressWriter)
 		},
-		Breakpoints: bp,
-		DebugImage:  clicontext.String("image"),
-		StopOnEntry: true,
-		CleanupAll:  cleanupAll,
+		Breakpoints:    bp,
+		DebugImage:     clicontext.String("image"),
+		StopOnEntry:    true,
+		CleanupAll:     cleanupAll,
+		StartupTimeout: clicontext.Duration("startup-timeout"),
 	})
 }
 
