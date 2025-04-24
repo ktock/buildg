@@ -53,6 +53,7 @@ type DebugConfig struct {
 	StopOnEntry        bool
 	DisableBreakpoints bool
 	CleanupAll         bool
+	StartupTimeout     time.Duration
 }
 
 func Debug(ctx context.Context, cfg *config.Config, solveOpt *client.SolveOpt, progressWriter io.Writer, debugConfig DebugConfig) error {
@@ -75,12 +76,16 @@ func Debug(ctx context.Context, cfg *config.Config, solveOpt *client.SolveOpt, p
 		}
 		close(createdCh)
 	}()
+	timeout := debugConfig.StartupTimeout
+	if timeout == 0 {
+		timeout = 3 * time.Second
+	}
 	select {
 	case <-ctx.Done():
 		err := ctx.Err()
 		return err
-	case <-time.After(3 * time.Second):
-		return fmt.Errorf("timed out to access cache storage. other debug session is running?")
+	case <-time.After(timeout):
+		return fmt.Errorf("timed out to start buildg. other debug session is running?")
 	case err := <-errCh:
 		return err
 	case <-createdCh:
