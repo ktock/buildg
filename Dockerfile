@@ -1,7 +1,7 @@
 # syntax = docker/dockerfile:1.4
 
 # Dependencies
-ARG RUNC_VERSION=v1.1.12
+ARG RUNC_VERSION=v1.2.6
 ARG ROOTLESSKIT_VERSION=v2.3.4
 ARG SLIRP4NETNS_VERSION=v1.3.2
 

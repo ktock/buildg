@@ -96,10 +96,11 @@ func parseDAPSolveOpt(cfg LaunchConfig) (*client.SolveOpt, error) {
 
 	var optStr []string
 	dir, file := filepath.Split(cfg.Program)
-	localDirs, err := build.ParseLocal([]string{
-		"context=" + dir,
-		"dockerfile=" + dir,
-	})
+	var err error
+	localDirs := map[string]string{
+		"context":    dir,
+		"dockerfile": dir,
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +119,9 @@ func parseDAPSolveOpt(cfg LaunchConfig) (*client.SolveOpt, error) {
 	if err != nil {
 		return nil, err
 	}
-	attachable := []session.Attachable{authprovider.NewDockerAuthProvider(dockerconfig.LoadDefaultConfigFile(os.Stderr))}
+	attachable := []session.Attachable{
+		authprovider.NewDockerAuthProvider(authprovider.DockerAuthProviderConfig{
+			ConfigFile: dockerconfig.LoadDefaultConfigFile(os.Stderr)})}
 	if ssh := cfg.SSH; len(ssh) > 0 {
 		configs, err := build.ParseSSH(ssh)
 		if err != nil {

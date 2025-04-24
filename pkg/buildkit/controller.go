@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/moby/buildkit/executor"
 	"github.com/moby/buildkit/frontend"
 	gwclient "github.com/moby/buildkit/frontend/gateway/client"
 	"github.com/moby/buildkit/identity"
@@ -132,8 +133,8 @@ type debugFrontend struct {
 	debugController *debugController
 }
 
-func (f *debugFrontend) Solve(ctx context.Context, llb frontend.FrontendLLBBridge, opt map[string]string, inputs map[string]*pb.Definition, sid string, sm *session.Manager) (*frontend.Result, error) {
-	return f.Frontend.Solve(ctx, &debugFrontendBridge{llb, f.debugController}, opt, inputs, sid, sm)
+func (f *debugFrontend) Solve(ctx context.Context, llb frontend.FrontendLLBBridge, e executor.Executor, opt map[string]string, inputs map[string]*pb.Definition, sid string, sm *session.Manager) (*frontend.Result, error) {
+	return f.Frontend.Solve(ctx, &debugFrontendBridge{llb, f.debugController}, e, opt, inputs, sid, sm)
 }
 
 type debugFrontendBridge struct {
