@@ -9,7 +9,7 @@ target "_common" {
 }
 
 // Special target: https://github.com/docker/metadata-action#bake-definition
-target "meta-helper" {}
+target "docker-metadata-action" {}
 
 
 group "default" {
@@ -17,7 +17,7 @@ group "default" {
 }
 
 target "image" {
-  inherits = ["_common", "meta-helper"]
+  inherits = ["_common", "docker-metadata-action"]
     output = ["type=image"]
 }
 
