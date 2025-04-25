@@ -87,7 +87,7 @@ func Debug(ctx context.Context, cfg *config.Config, solveOpt *client.SolveOpt, p
 		err := ctx.Err()
 		return err
 	case <-time.After(timeout):
-		return fmt.Errorf("timed out to start buildg. other debug session is running?")
+		return fmt.Errorf("timed out to start buildg(%v). other debug session is running?", timeout)
 	case err := <-errCh:
 		return err
 	case <-createdCh:
