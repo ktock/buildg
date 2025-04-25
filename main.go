@@ -73,11 +73,6 @@ func main() {
 			EnvVar: "BUILDG_ROOTLESSKIT_ARGS",
 			Value:  "",
 		},
-		cli.DurationFlag{
-			Name:  "startup-timeout",
-			Usage: "Timeout for starting up buildg",
-			Value: 3 * time.Second,
-		},
 	}, flags...)
 	app.Commands = []cli.Command{
 		newDebugCommand(),
@@ -207,6 +202,11 @@ func newDebugCommand() cli.Command {
 			cli.BoolTFlag{
 				Name:  "cache-reuse",
 				Usage: "Reuse locally cached previous results.",
+			},
+			cli.DurationFlag{
+				Name:  "startup-timeout",
+				Usage: "Timeout for starting up buildg",
+				Value: 3 * time.Second,
 			},
 		},
 	}
