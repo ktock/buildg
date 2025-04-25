@@ -450,7 +450,7 @@ func (s *Server) onStackTraceRequest(request *dap.StackTraceRequest) {
 		response.Body.StackFrames = []dap.StackFrame{
 			{
 				Id:     0,
-				Source: dap.Source{Name: filepath.Base(f), Path: f},
+				Source: &dap.Source{Name: filepath.Base(f), Path: f},
 				// FIXME: We only return lines[0] because stackFrame doesn't support
 				//        multiple sources per frame. Once dap support it, we can
 				//        return all current locations.
