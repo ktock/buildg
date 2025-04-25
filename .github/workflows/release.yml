@@ -22,6 +22,7 @@ jobs:
         ( cd ${OUTPUT_DIR}; sha256sum * ) > "${GITHUB_WORKSPACE}/SHA256SUMS"
         mv "${GITHUB_WORKSPACE}/SHA256SUMS" "${OUTPUT_DIR}/SHA256SUMS"
     - name: Create Release
+      if: github.event_name != 'pull_request'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
