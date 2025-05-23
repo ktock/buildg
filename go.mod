@@ -5,7 +5,7 @@ go 1.23.0
 toolchain go1.23.8
 
 require (
-	github.com/containerd/console v1.0.4
+	github.com/containerd/console v1.0.5
 	github.com/containerd/containerd/v2 v2.0.5
 	github.com/containerd/fifo v1.1.0
 	github.com/docker/cli v28.1.1+incompatible
