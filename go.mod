@@ -20,7 +20,7 @@ require (
 	github.com/urfave/cli v1.22.16
 	golang.org/x/crypto v0.38.0
 	golang.org/x/sync v0.14.0
-	google.golang.org/grpc v1.72.1
+	google.golang.org/grpc v1.72.2
 )
 
 require (
