@@ -15,7 +15,7 @@ jobs:
     env:
       OUTPUT_DIR: ${{ github.workspace }}/builds
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Build
       run: |
         PREFIX=${OUTPUT_DIR} make artifacts
@@ -78,7 +78,7 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       -
         name: Docker meta
         id: meta
