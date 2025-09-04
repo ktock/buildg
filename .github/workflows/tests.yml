@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-24.04
     name: Build
     steps:
-    - uses: actions/setup-go@v5
+    - uses: actions/setup-go@v6
       with:
         go-version: '1.23.x'
     - uses: actions/checkout@v5
@@ -28,7 +28,7 @@ jobs:
       matrix:
         mode: ["root", "rootless"]
     steps:
-    - uses: actions/setup-go@v5
+    - uses: actions/setup-go@v6
       with:
         go-version: '1.23.x'
     - uses: actions/checkout@v5
@@ -79,7 +79,7 @@ jobs:
     name: Project Checks
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/setup-go@v5
+    - uses: actions/setup-go@v6
       with:
         go-version: '1.23.x'
     - uses: actions/checkout@v5
