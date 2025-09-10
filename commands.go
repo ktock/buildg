@@ -110,7 +110,7 @@ func (h *commandHandler) breakHandler(ctx context.Context, bCtx buildkit.BreakCo
 }
 
 func (h *commandHandler) readLine(ctx context.Context) (string, error) {
-	fmt.Fprintf(h.stdout, h.prompt)
+	fmt.Fprint(h.stdout, h.prompt)
 	r, done := h.stdin.use()
 	defer done()
 	lnCh := make(chan string)
