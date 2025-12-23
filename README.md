@@ -8,7 +8,7 @@
 
 - Source-level inspection
 - Breakpoints and step execution
-- Interactive shell on a step with your own debugigng tools
+- Interactive shell on a step with your own debugging tools
 - Based on BuildKit (with unmerged patches)
 - Supports rootless
 
@@ -22,7 +22,7 @@ buildg debug /path/to/build/context
 
 The above command starts an interactive debugger session for debugging the Dockerfile in `/path/to/build/context`.
 
-For the detailed command refenrece, refer to [Command reference](#command-reference).
+For the detailed command reference, refer to [Command reference](#command-reference).
 
 ### Exmaple with terminal
 
@@ -99,7 +99,7 @@ world
 ## Use on IDEs
 
 Buildg allows visual and interactive debugging of Dockerfile on editors like VS Code, emacs and Neovim.
-This is provided throgh [DAP(Debug Adapter Protocol)](https://microsoft.github.io/debug-adapter-protocol/) supported by editors [(official list)](https://microsoft.github.io/debug-adapter-protocol/implementors/tools/).
+This is provided through [DAP(Debug Adapter Protocol)](https://microsoft.github.io/debug-adapter-protocol/) supported by editors [(official list)](https://microsoft.github.io/debug-adapter-protocol/implementors/tools/).
 
 See [`./examples/dap/README.md`](./examples/dap/README.md) for usage of DAP.
 
