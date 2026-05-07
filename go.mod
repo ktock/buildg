@@ -1,6 +1,6 @@
 module github.com/ktock/buildg
 
-go 1.24.0
+go 1.25.0
 
 require (
 	github.com/containerd/console v1.0.5
@@ -17,7 +17,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/urfave/cli v1.22.17
 	golang.org/x/crypto v0.42.0
-	golang.org/x/sync v0.17.0
+	golang.org/x/sync v0.20.0
 	google.golang.org/grpc v1.75.1
 )
 
