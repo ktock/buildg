@@ -1,0 +1,14 @@
+version: 2
+updates:
+
+  # Automatic upgrade for go modules.
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "daily"
+
+  # Automatic upgrade for Github Actions
+  - package-ecosystem: "github-actions"
+    directory: "/" # means ".github/workflows"
+    schedule:
+      interval: "daily"

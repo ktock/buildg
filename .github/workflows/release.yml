@@ -1,0 +1,120 @@
+name: Release
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    name: Release
+    env:
+      OUTPUT_DIR: ${{ github.workspace }}/builds
+    steps:
+    - uses: actions/checkout@v6
+    - name: Build
+      run: |
+        PREFIX=${OUTPUT_DIR} make artifacts
+        ( cd ${OUTPUT_DIR}; sha256sum * ) > "${GITHUB_WORKSPACE}/SHA256SUMS"
+        mv "${GITHUB_WORKSPACE}/SHA256SUMS" "${OUTPUT_DIR}/SHA256SUMS"
+    - name: Create Release
+      if: github.event_name != 'pull_request'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        SHA256SUM_OF_SHA256SUM=$(sha256sum ${OUTPUT_DIR}/SHA256SUMS | cut -d ' ' -f 1)
+        RELEASE_TAG="${GITHUB_REF##*/}"
+        MINIMAL_TAR=$(ls -1 ${OUTPUT_DIR} | grep buildg-v | head -1)
+        MINIMAL_TAR_LIST=$(tar --list -vvf ${OUTPUT_DIR}/${MINIMAL_TAR})
+        FULL_TAR=$(ls -1 ${OUTPUT_DIR} | grep buildg-full | head -1)
+        FULL_TAR_LIST=$(tar --list -vvf ${OUTPUT_DIR}/${FULL_TAR})
+        cat <<EOF > ${GITHUB_WORKSPACE}/release-note.txt
+        (TBD)
+
+        ## About the binaries
+        - Minimal(e.g. \`${MINIMAL_TAR}\`): contains only buildg binary
+        - Full(e.g. \`${FULL_TAR}\`): contains buildg and its dependencies
+
+        ### Minimal
+        Extract it to a path like \`/usr/local/bin/\` or \`~/bin/\`
+
+        <details>
+        <summary>list of files</summary>
+
+        \`\`\`
+        ${MINIMAL_TAR_LIST}
+        \`\`\`
+
+        </details>
+
+        ### Full
+        Extract it to a path like \`/usr/local/\` or \`~/.local\`
+
+        <details>
+        <summary>list of files</summary>
+
+        \`\`\`
+        ${FULL_TAR_LIST}
+        \`\`\`
+
+        </details>
+
+        ---
+        
+        The sha256sum of SHA256SUM is \`${SHA256SUM_OF_SHA256SUM}\`
+
+        EOF
+        ASSET_FLAGS=()
+        ls -al ${OUTPUT_DIR}/
+        gh release create -F ${GITHUB_WORKSPACE}/release-note.txt --draft --title "${RELEASE_TAG}" "${RELEASE_TAG}" ${OUTPUT_DIR}/*
+
+  containerize:
+    runs-on: ubuntu-24.04
+    name: Containerize
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v6
+      -
+        name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+          labels: |
+            org.opencontainers.image.title=buildg
+            org.opencontainers.image.description=Interactive debugger for Dockerfile, with support for IDEs (VS Code, Emacs, Neovim, etc.)
+            org.opencontainers.image.vendor=${{ github.repository_owner }}
+      -
+        name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+      -
+        name: Login to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      -
+        name: Build image
+        uses: docker/bake-action@v7
+        with:
+          files: |
+            ./docker-bake.hcl
+            cwd://${{ steps.meta.outputs.bake-file }}
+          targets: image-cross
+          push: ${{ github.event_name != 'pull_request' }}
+          set: |
+            *.cache-from=type=gha,scope=bin-image
+            *.cache-to=type=gha,scope=bin-image,mode=max

@@ -1,0 +1,37 @@
+version: "2"
+linters:
+  enable:
+    - misspell
+    - revive
+    - unconvert
+  disable:
+    - errcheck
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - revive
+        text: unused-parameter
+      - linters:
+          - revive
+        text: redefines-builtin-id
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+      - out
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
